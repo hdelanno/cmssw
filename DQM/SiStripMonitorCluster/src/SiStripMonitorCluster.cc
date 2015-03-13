@@ -2,7 +2,7 @@
 // Package:    SiStripMonitorCluster
 // Class:      SiStripMonitorCluster
 /**\class SiStripMonitorCluster SiStripMonitorCluster.cc DQM/SiStripMonitorCluster/src/SiStripMonitorCluster.cc
- */
+*/
 // Original Author:  Dorian Kcira
 //         Created:  Wed Feb  1 16:42:34 CET 2006
 #include <vector>
@@ -30,6 +30,9 @@
 #include "DataFormats/SiStripDetId/interface/SiStripSubStructure.h"
 #include "CalibTracker/SiStripCommon/interface/SiStripDCSStatus.h"
 #include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
+#include "DataFormats/DetId/interface/DetId.h"
+#include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
+
 
 #include "DPGAnalysis/SiStripTools/interface/APVCyclePhaseCollection.h"
 #include "DPGAnalysis/SiStripTools/interface/EventWithHistory.h"
@@ -40,9 +43,9 @@
 #include <iostream>
 
 //--------------------------------------------------------------------------------------------
-SiStripMonitorCluster::SiStripMonitorCluster(const edm::ParameterSet& iConfig)
-  : conf_(iConfig), show_mechanical_structure_view(true), show_readout_view(false), show_control_view(false), select_all_detectors(false), reset_each_run(false), m_cacheID_(0)
-					    //  , genTriggerEventFlag_(new GenericTriggerEventFlag(iConfig, consumesCollector()))
+  SiStripMonitorCluster::SiStripMonitorCluster(const edm::ParameterSet& iConfig)
+: conf_(iConfig), show_mechanical_structure_view(true), show_readout_view(false), show_control_view(false), select_all_detectors(false), reset_each_run(false), m_cacheID_(0)
+  //  , genTriggerEventFlag_(new GenericTriggerEventFlag(iConfig, consumesCollector()))
 {
 
   // initialize
@@ -173,9 +176,9 @@ SiStripMonitorCluster::SiStripMonitorCluster(const edm::ParameterSet& iConfig)
   clusterProducerStripToken_ = consumes<edmNew::DetSetVector<SiStripCluster> >(conf_.getParameter<edm::InputTag>("ClusterProducerStrip") );
   clusterProducerPixToken_   = consumes<edmNew::DetSetVector<SiPixelCluster> >(conf_.getParameter<edm::InputTag>("ClusterProducerPix") );
   /*
-  clusterProducerStrip_ = conf_.getParameter<edm::InputTag>("ClusterProducerStrip");
-  clusterProducerPix_ = conf_.getParameter<edm::InputTag>("ClusterProducerPix");
-  */
+     clusterProducerStrip_ = conf_.getParameter<edm::InputTag>("ClusterProducerStrip");
+     clusterProducerPix_ = conf_.getParameter<edm::InputTag>("ClusterProducerPix");
+     */
   // SiStrip Quality Label
   qualityLabel_  = conf_.getParameter<std::string>("StripQualityLabel");
   // cluster quality conditions
@@ -247,7 +250,7 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
     if (clustertkhistomapon) {
       //      std::cout << "[SiStripMonitorCluster::createMEs] topFolderName_: " << topFolderName_ << "     ";
       if ( (topFolderName_ == "SiStrip") or (std::string::npos != topFolderName_.find("HLT")) )
-	tkmapcluster = new TkHistoMap(ibooker , topFolderName_,"TkHMap_NumberOfCluster",0.,true);
+        tkmapcluster = new TkHistoMap(ibooker , topFolderName_,"TkHMap_NumberOfCluster",0.,true);
       else tkmapcluster = new TkHistoMap(ibooker , topFolderName_+"/TkHistoMap","TkHMap_NumberOfCluster",0.,false);
     }
 
@@ -257,18 +260,18 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       uint32_t detid = (*detid_iterator);
       // remove any eventual zero elements - there should be none, but just in case
       if(detid == 0) {
-	activeDets.erase(detid_iterator);
+        activeDets.erase(detid_iterator);
         continue;
       }
 
       if (Mod_On_) {
-	ModMEs mod_single;
-	// set appropriate folder using SiStripFolderOrganizer
-	folder_organizer.setDetectorFolder(detid, tTopo); // pass the detid to this method
-	if (reset_each_run) ResetModuleMEs(detid);
-	createModuleMEs(mod_single, detid , ibooker);
-	// append to ModuleMEsMap
-	ModuleMEsMap.insert( std::make_pair(detid, mod_single));
+        ModMEs mod_single;
+        // set appropriate folder using SiStripFolderOrganizer
+        folder_organizer.setDetectorFolder(detid, tTopo); // pass the detid to this method
+        if (reset_each_run) ResetModuleMEs(detid);
+        createModuleMEs(mod_single, detid , ibooker);
+        // append to ModuleMEsMap
+        ModuleMEsMap.insert( std::make_pair(detid, mod_single));
       }
 
       // Create Layer Level MEs if they are not created already
@@ -281,7 +284,7 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
 
         // get detids for the layer
         int32_t lnumber = det_layer_pair.second;
-	std::vector<uint32_t> layerDetIds;
+        std::vector<uint32_t> layerDetIds;
         if (det_layer_pair.first == "TIB") {
           substructure.getTIBDetectors(activeDets,layerDetIds,lnumber,0,0,0);
         } else if (det_layer_pair.first == "TOB") {
@@ -295,18 +298,18 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
         } else if (det_layer_pair.first == "TEC" && lnumber < 0) {
           substructure.getTECDetectors(activeDets,layerDetIds,1,abs(lnumber),0,0,0,0);
         }
-	LayerDetMap[label] = layerDetIds;
+        LayerDetMap[label] = layerDetIds;
 
-	// book Layer MEs
-	folder_organizer.setLayerFolder(detid,tTopo,det_layer_pair.second);
-	createLayerMEs(label, layerDetIds.size() , ibooker );
+        // book Layer MEs
+        folder_organizer.setLayerFolder(detid,tTopo,det_layer_pair.second);
+        createLayerMEs(label, layerDetIds.size() , ibooker );
       }
       // book sub-detector plots
       std::pair<std::string,std::string> sdet_pair = folder_organizer.getSubDetFolderAndTag(detid, tTopo);
       if (SubDetMEsMap.find(sdet_pair.second) == SubDetMEsMap.end()){
-	ibooker.setCurrentFolder(sdet_pair.first);
+        ibooker.setCurrentFolder(sdet_pair.first);
 
-	createSubDetMEs(sdet_pair.second , ibooker );
+        createSubDetMEs(sdet_pair.second , ibooker );
       }
     }//end of loop over detectors
 
@@ -316,12 +319,12 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet GlobalTH2Parameters =  conf_.getParameter<edm::ParameterSet>("TH2ApvCycleVsDBxGlobal");
       std::string HistoName = "DeltaBx_vs_ApvCycle";
       GlobalApvCycleDBxTH2 = ibooker.book2D(HistoName,HistoName,
-					       GlobalTH2Parameters.getParameter<int32_t>("Nbinsx"),
-					       GlobalTH2Parameters.getParameter<double>("xmin"),
-					       GlobalTH2Parameters.getParameter<double>("xmax"),
-					       GlobalTH2Parameters.getParameter<int32_t>("Nbinsy"),
-					       GlobalTH2Parameters.getParameter<double>("ymin"),
-					       GlobalTH2Parameters.getParameter<double>("ymax"));
+          GlobalTH2Parameters.getParameter<int32_t>("Nbinsx"),
+          GlobalTH2Parameters.getParameter<double>("xmin"),
+          GlobalTH2Parameters.getParameter<double>("xmax"),
+          GlobalTH2Parameters.getParameter<int32_t>("Nbinsy"),
+          GlobalTH2Parameters.getParameter<double>("ymin"),
+          GlobalTH2Parameters.getParameter<double>("ymax"));
       GlobalApvCycleDBxTH2->setAxisTitle("APV Cycle (Corrected Absolute Bx % 70)",1);
       GlobalApvCycleDBxTH2->setAxisTitle("Delta Bunch Crossing Cycle",2);
     }
@@ -331,12 +334,12 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet GlobalTH2Parameters =  conf_.getParameter<edm::ParameterSet>("TH2CStripVsCpixel");
       std::string HistoName = "StripClusVsPixClus";
       GlobalCStripVsCpix = ibooker.book2D(HistoName,HistoName,
-					       GlobalTH2Parameters.getParameter<int32_t>("Nbinsx"),
-					       GlobalTH2Parameters.getParameter<double>("xmin"),
-					       GlobalTH2Parameters.getParameter<double>("xmax"),
-					       GlobalTH2Parameters.getParameter<int32_t>("Nbinsy"),
-					       GlobalTH2Parameters.getParameter<double>("ymin"),
-					       GlobalTH2Parameters.getParameter<double>("ymax"));
+          GlobalTH2Parameters.getParameter<int32_t>("Nbinsx"),
+          GlobalTH2Parameters.getParameter<double>("xmin"),
+          GlobalTH2Parameters.getParameter<double>("xmax"),
+          GlobalTH2Parameters.getParameter<int32_t>("Nbinsy"),
+          GlobalTH2Parameters.getParameter<double>("ymin"),
+          GlobalTH2Parameters.getParameter<double>("ymax"));
       GlobalCStripVsCpix->setAxisTitle("Strip Clusters",1);
       GlobalCStripVsCpix->setAxisTitle("Pix Clusters",2);
     }
@@ -346,9 +349,9 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet GlobalTH2Parameters =  conf_.getParameter<edm::ParameterSet>("TH1MultiplicityRegions");
       std::string HistoName = "ClusterMultiplicityRegions";
       PixVsStripMultiplicityRegions = ibooker.book1D(HistoName,HistoName,
-					       GlobalTH2Parameters.getParameter<int32_t>("Nbinx"),
-					       GlobalTH2Parameters.getParameter<double>("xmin"),
-					       GlobalTH2Parameters.getParameter<double>("xmax"));
+          GlobalTH2Parameters.getParameter<int32_t>("Nbinx"),
+          GlobalTH2Parameters.getParameter<double>("xmin"),
+          GlobalTH2Parameters.getParameter<double>("xmax"));
       PixVsStripMultiplicityRegions->setAxisTitle("");
       PixVsStripMultiplicityRegions->setBinLabel(1,"Main Diagonal");
       PixVsStripMultiplicityRegions->setBinLabel(2,"Strip Noise");
@@ -362,32 +365,32 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet GlobalTH1Parameters =  conf_.getParameter<edm::ParameterSet>("TH1MainDiagonalPosition");
       std::string HistoName = "MainDiagonal Position";
       GlobalMainDiagonalPosition = ibooker.book1D(HistoName,HistoName,
-					     GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
-					     GlobalTH1Parameters.getParameter<double>("xmin"),
-					     GlobalTH1Parameters.getParameter<double>("xmax"));
+          GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
+          GlobalTH1Parameters.getParameter<double>("xmin"),
+          GlobalTH1Parameters.getParameter<double>("xmax"));
       GlobalMainDiagonalPosition->setAxisTitle("atan(NPix/(k*NStrip))");
     }
 
     // TO BE ADDED !!!
     /*
-    if ( globalswitchapvcycledbxth2on or globalswitchcstripvscpix or globalswitchMultiRegions or ClusterHisto_ ) {
-    ibooker.setCurrentFolder(topFolderName_+"/MechanicalView/");
-      std::string HistoName = "BPTX rate";
-      BPTXrateTrend = ibooker.bookProfile(HistoName,HistoName, LSBin, LSMin, LSMax, 0, 10000.,"");
-      BPTXrateTrend->getTH1()->SetBit(TH1::kCanRebin);
-      BPTXrateTrend->setAxisTitle("#Lumi section",1);
-      BPTXrateTrend->setAxisTitle("Number of BPTX events per LS",2);
-    }
-    */
+       if ( globalswitchapvcycledbxth2on or globalswitchcstripvscpix or globalswitchMultiRegions or ClusterHisto_ ) {
+       ibooker.setCurrentFolder(topFolderName_+"/MechanicalView/");
+       std::string HistoName = "BPTX rate";
+       BPTXrateTrend = ibooker.bookProfile(HistoName,HistoName, LSBin, LSMin, LSMax, 0, 10000.,"");
+       BPTXrateTrend->getTH1()->SetBit(TH1::kCanRebin);
+       BPTXrateTrend->setAxisTitle("#Lumi section",1);
+       BPTXrateTrend->setAxisTitle("Number of BPTX events per LS",2);
+       }
+       */
 
     if (globalswitchstripnoise2apvcycle){
       ibooker.setCurrentFolder(topFolderName_+"/MechanicalView/");
       edm::ParameterSet GlobalTH1Parameters =  conf_.getParameter<edm::ParameterSet>("TH1StripNoise2ApvCycle");
       std::string HistoName = "StripNoise_ApvCycle";
       StripNoise2Cycle = ibooker.book1D(HistoName,HistoName,
-					     GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
-					     GlobalTH1Parameters.getParameter<double>("xmin"),
-					     GlobalTH1Parameters.getParameter<double>("xmax"));
+          GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
+          GlobalTH1Parameters.getParameter<double>("xmin"),
+          GlobalTH1Parameters.getParameter<double>("xmax"));
       StripNoise2Cycle->setAxisTitle("APV Cycle");
     }
 
@@ -396,9 +399,9 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet GlobalTH1Parameters =  conf_.getParameter<edm::ParameterSet>("TH1StripNoise3ApvCycle");
       std::string HistoName = "HighStripNoise_ApvCycle";
       StripNoise3Cycle = ibooker.book1D(HistoName,HistoName,
-					     GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
-					     GlobalTH1Parameters.getParameter<double>("xmin"),
-					     GlobalTH1Parameters.getParameter<double>("xmax"));
+          GlobalTH1Parameters.getParameter<int32_t>("Nbinsx"),
+          GlobalTH1Parameters.getParameter<double>("xmin"),
+          GlobalTH1Parameters.getParameter<double>("xmax"));
       StripNoise3Cycle->setAxisTitle("APV Cycle");
     }
 
@@ -407,13 +410,13 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       const char* HistoTitle = "Strip cluster multiplicity vs BX mod(70) and Orbit;Event 1 BX mod(70);time [Orb#]";
       edm::ParameterSet ParametersNclusVsCycleTimeProf2D = conf_.getParameter<edm::ParameterSet>("NclusVsCycleTimeProf2D");
       NclusVsCycleTimeProf2D = ibooker.bookProfile2D ( HistoName , HistoTitle ,
-						       ParametersNclusVsCycleTimeProf2D.getParameter<int32_t>("Nbins"),
-						       ParametersNclusVsCycleTimeProf2D.getParameter<double>("xmin"),
-						       ParametersNclusVsCycleTimeProf2D.getParameter<double>("xmax"),
-						       ParametersNclusVsCycleTimeProf2D.getParameter<int32_t>("Nbinsy"),
-						       ParametersNclusVsCycleTimeProf2D.getParameter<double>("ymin"),
-						       ParametersNclusVsCycleTimeProf2D.getParameter<double>("ymax"),
-						       0 , 0 );
+          ParametersNclusVsCycleTimeProf2D.getParameter<int32_t>("Nbins"),
+          ParametersNclusVsCycleTimeProf2D.getParameter<double>("xmin"),
+          ParametersNclusVsCycleTimeProf2D.getParameter<double>("xmax"),
+          ParametersNclusVsCycleTimeProf2D.getParameter<int32_t>("Nbinsy"),
+          ParametersNclusVsCycleTimeProf2D.getParameter<double>("ymin"),
+          ParametersNclusVsCycleTimeProf2D.getParameter<double>("ymax"),
+          0 , 0 );
       if (NclusVsCycleTimeProf2D->kind() == MonitorElement::DQM_KIND_TPROFILE2D) NclusVsCycleTimeProf2D->getTH1()->SetBit(TH1::kCanRebin);
     }
 
@@ -422,18 +425,18 @@ void SiStripMonitorCluster::createMEs(const edm::EventSetup& es , DQMStore::IBoo
       edm::ParameterSet PixelCluster =  conf_.getParameter<edm::ParameterSet>("TH1NClusPx");
       std::string HistoName = "NumberOfClustersInPixel";
       NumberOfPixelClus = ibooker.book1D(HistoName, HistoName,
-					    PixelCluster.getParameter<int32_t>("Nbinsx"),
-					    PixelCluster.getParameter<double>("xmin"),
-					    PixelCluster.getParameter<double>("xmax"));
+          PixelCluster.getParameter<int32_t>("Nbinsx"),
+          PixelCluster.getParameter<double>("xmin"),
+          PixelCluster.getParameter<double>("xmax"));
       NumberOfPixelClus->setAxisTitle("# of Clusters in Pixel", 1);
       NumberOfPixelClus->setAxisTitle("Number of Events", 2);
       //
       edm::ParameterSet StripCluster =  conf_.getParameter<edm::ParameterSet>("TH1NClusStrip");
       HistoName = "NumberOfClustersInStrip";
       NumberOfStripClus = ibooker.book1D(HistoName, HistoName,
-					    StripCluster.getParameter<int32_t>("Nbinsx"),
-					    StripCluster.getParameter<double>("xmin"),
-					    StripCluster.getParameter<double>("xmax"));
+          StripCluster.getParameter<int32_t>("Nbinsx"),
+          StripCluster.getParameter<double>("xmin"),
+          StripCluster.getParameter<double>("xmax"));
       NumberOfStripClus->setAxisTitle("# of Clusters in Strip", 1);
       NumberOfStripClus->setAxisTitle("Number of Events", 2);
     }
@@ -450,14 +453,14 @@ void SiStripMonitorCluster::bookHistograms(DQMStore::IBooker & ibooker, const ed
     unsigned long long cacheID = es.get<SiStripDetCablingRcd>().cacheIdentifier();
     if (m_cacheID_ != cacheID) {
       m_cacheID_ = cacheID;
-     edm::LogInfo("SiStripMonitorCluster") <<"SiStripMonitorCluster::bookHistograms: "
-					    << " Creating MEs for new Cabling ";
+      edm::LogInfo("SiStripMonitorCluster") <<"SiStripMonitorCluster::bookHistograms: "
+        << " Creating MEs for new Cabling ";
 
-     createMEs(es , ibooker);
+      createMEs(es , ibooker);
     }
   } else if (reset_each_run) {
     edm::LogInfo("SiStripMonitorCluster") <<"SiStripMonitorCluster::bookHistograms: "
-					  << " Resetting MEs ";
+      << " Resetting MEs ";
     for (std::map<uint32_t, ModMEs >::const_iterator idet = ModuleMEsMap.begin() ; idet!=ModuleMEsMap.end() ; idet++) {
       ResetModuleMEs(idet->first);
     }
@@ -480,7 +483,12 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
   //  std::cout << "passBPTXfilter_ ? " << passBPTXfilter_ << std::endl;
 
   // Filter out events if DCS Event if requested
-  if (dcsStatus_ && !dcsStatus_->getStatus(iEvent,iSetup)) return;
+  bool statusTIBTID(false), statusTOB(false), statusTECF(false), statusTECB(false);
+
+  if(dcsStatus_)  dcsStatus_->getStatusPartition(iEvent, iSetup, statusTIBTID, statusTOB, statusTECF, statusTECB); //status of each partition
+
+  if(dcsStatus_ && !statusTIBTID && !statusTOB && !statusTECF && !statusTECB) return;
+
 
   runNb   = iEvent.id().run();
   eventNb++;
@@ -527,21 +535,24 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
 
     if (ClusterHisto_){
       if ( passBPTXfilter_ and passPixelDCSfilter_ )
-	NumberOfPixelClus->Fill(NPixClusters);
+        NumberOfPixelClus->Fill(NPixClusters);
       if ( passBPTXfilter_ and passStripDCSfilter_ )
-	NumberOfStripClus->Fill(NStripClusters);
+        NumberOfStripClus->Fill(NStripClusters);
     }
   }
   // initialise # of clusters to zero
   for (std::map<std::string, SubDetMEs>::iterator iSubdet  = SubDetMEsMap.begin();
-       iSubdet != SubDetMEsMap.end(); iSubdet++) {
+      iSubdet != SubDetMEsMap.end(); iSubdet++) {
     iSubdet->second.totNClusters = 0;
   }
 
   SiStripFolderOrganizer folder_organizer;
   bool found_layer_me = false;
+
+  bool skipEvent = false;
+
   for (std::map<std::string, std::vector< uint32_t > >::const_iterator iterLayer = LayerDetMap.begin();
-       iterLayer != LayerDetMap.end(); iterLayer++) {
+      iterLayer != LayerDetMap.end(); iterLayer++) {
 
     std::string layer_label = iterLayer->first;
 
@@ -551,16 +562,17 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
     //get Layer MEs
     LayerMEs layer_single;
     if(iLayerME != LayerMEsMap.end()) {
-       layer_single = iLayerME->second;
-       found_layer_me = true;
-     }
+      layer_single = iLayerME->second;
+      found_layer_me = true;
+    }
 
     bool found_module_me = false;
     uint16_t iDet = 0;
     std::string subdet_label = "";
+
     // loop over all modules in the layer
     for (std::vector< uint32_t >::const_iterator iterDets = iterLayer->second.begin() ;
-	 iterDets != iterLayer->second.end() ; iterDets++) {
+        iterDets != iterLayer->second.end() ; iterDets++) {
       iDet++;
       // detid and type of ME
       uint32_t detid = (*iterDets);
@@ -568,25 +580,40 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
       // Get SubDet label once
       if (subdet_label.size() == 0) subdet_label = folder_organizer.getSubDetFolderAndTag(detid, tTopo).second;
 
+
+      //skip event if dcsStatus for this subdetector is false
+      skipEvent = false;
+
+      if(dcsStatus_){
+        DetId detIdObject(detid);
+        if(!statusTECB &&  detIdObject.subdetId() == StripSubdetector::TEC && tTopo->tecIsZMinusSide(detIdObject)) skipEvent = true;
+        if(!statusTECF &&  detIdObject.subdetId() == StripSubdetector::TEC && tTopo->tecIsZPlusSide(detIdObject)) skipEvent = true;
+        if(!statusTIBTID && (detIdObject.subdetId() == StripSubdetector::TIB || 
+              detIdObject.subdetId() == StripSubdetector::TID)) skipEvent = true; 
+        if(!statusTOB && detIdObject.subdetId() == StripSubdetector::TOB) skipEvent = true;
+      }
+      if(skipEvent) continue;
+
+
       // DetId and corresponding set of MEs
       ModMEs mod_single;
       if (Mod_On_) {
-	std::map<uint32_t, ModMEs >::iterator imodME = ModuleMEsMap.find(detid);
-	if (imodME != ModuleMEsMap.end()) {
-	  mod_single = imodME->second;
-	  found_module_me = true;
-	}
+        std::map<uint32_t, ModMEs >::iterator imodME = ModuleMEsMap.find(detid);
+        if (imodME != ModuleMEsMap.end()) {
+          mod_single = imodME->second;
+          found_module_me = true;
+        }
       } else found_module_me = false;
 
       edmNew::DetSetVector<SiStripCluster>::const_iterator isearch = cluster_detsetvektor->find(detid); // search  clusters of detid
 
       if(isearch==cluster_detsetvektor->end()){
-	if(found_module_me && moduleswitchncluson && (mod_single.NumberOfClusters)){
-	  (mod_single.NumberOfClusters)->Fill(0.); // no clusters for this detector module,fill histogram with 0
-	}
-	if(clustertkhistomapon) tkmapcluster->fill(detid,0.);
-	if (found_layer_me && layerswitchnumclusterprofon) layer_single.LayerNumberOfClusterProfile->Fill(iDet, 0.0);
-	continue; // no clusters for this detid => jump to next step of loop
+        if(found_module_me && moduleswitchncluson && (mod_single.NumberOfClusters)){
+          (mod_single.NumberOfClusters)->Fill(0.); // no clusters for this detector module,fill histogram with 0
+        }
+        if(clustertkhistomapon) tkmapcluster->fill(detid,0.);
+        if (found_layer_me && layerswitchnumclusterprofon) layer_single.LayerNumberOfClusterProfile->Fill(iDet, 0.0);
+        continue; // no clusters for this detid => jump to next step of loop
       }
 
       //cluster_detset is a structure, cluster_detset.data is a std::vector<SiStripCluster>, cluster_detset.id is uint32_t
@@ -595,15 +622,15 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
 
       // Filling TkHistoMap with number of clusters for each module
       if(clustertkhistomapon) {
-	tkmapcluster->fill(detid,static_cast<float>(cluster_detset.size()));
+        tkmapcluster->fill(detid,static_cast<float>(cluster_detset.size()));
       }
 
       if(moduleswitchncluson && found_module_me && (mod_single.NumberOfClusters != NULL)){ // nr. of clusters per module
-	(mod_single.NumberOfClusters)->Fill(static_cast<float>(cluster_detset.size()));
+        (mod_single.NumberOfClusters)->Fill(static_cast<float>(cluster_detset.size()));
       }
 
       if (found_layer_me && layerswitchnumclusterprofon)
-	layer_single.LayerNumberOfClusterProfile->Fill(iDet, static_cast<float>(cluster_detset.size()));
+        layer_single.LayerNumberOfClusterProfile->Fill(iDet, static_cast<float>(cluster_detset.size()));
       ncluster_layer +=  cluster_detset.size();
 
       short total_clusterized_strips = 0;
@@ -614,84 +641,84 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
 
       for(edmNew::DetSet<SiStripCluster>::const_iterator clusterIter = cluster_detset.begin(); clusterIter!= cluster_detset.end(); clusterIter++){
 
-	const auto & ampls = clusterIter->amplitudes();
-	// cluster position
-	float cluster_position = clusterIter->barycenter();
-	// start defined as nr. of first strip beloning to the cluster
-	short cluster_start    = clusterIter->firstStrip();
-	// width defined as nr. of strips that belong to cluster
-	short cluster_width    = ampls.size();
-	// add nr of strips of this cluster to total nr. of clusterized strips
-	total_clusterized_strips = total_clusterized_strips + cluster_width;
+        const auto & ampls = clusterIter->amplitudes();
+        // cluster position
+        float cluster_position = clusterIter->barycenter();
+        // start defined as nr. of first strip beloning to the cluster
+        short cluster_start    = clusterIter->firstStrip();
+        // width defined as nr. of strips that belong to cluster
+        short cluster_width    = ampls.size();
+        // add nr of strips of this cluster to total nr. of clusterized strips
+        total_clusterized_strips = total_clusterized_strips + cluster_width;
 
-	// cluster signal and noise from the amplitudes
-	float cluster_signal = 0.0;
-	float cluster_noise  = 0.0;
-	int nrnonzeroamplitudes = 0;
-	float noise2 = 0.0;
-	float noise  = 0.0;
-	for(uint iamp=0; iamp<ampls.size(); iamp++){
-	  if(ampls[iamp]>0){ // nonzero amplitude
-	    cluster_signal += ampls[iamp];
-	    if(!qualityHandle->IsStripBad(qualityRange, clusterIter->firstStrip()+iamp)){
-	      noise = noiseHandle->getNoise(clusterIter->firstStrip()+iamp,detNoiseRange)/gainHandle->getStripGain(clusterIter->firstStrip()+iamp, detGainRange);
-	    }
-	    noise2 += noise*noise;
-	    nrnonzeroamplitudes++;
-	  }
-	} // End loop over cluster amplitude
+        // cluster signal and noise from the amplitudes
+        float cluster_signal = 0.0;
+        float cluster_noise  = 0.0;
+        int nrnonzeroamplitudes = 0;
+        float noise2 = 0.0;
+        float noise  = 0.0;
+        for(uint iamp=0; iamp<ampls.size(); iamp++){
+          if(ampls[iamp]>0){ // nonzero amplitude
+            cluster_signal += ampls[iamp];
+            if(!qualityHandle->IsStripBad(qualityRange, clusterIter->firstStrip()+iamp)){
+              noise = noiseHandle->getNoise(clusterIter->firstStrip()+iamp,detNoiseRange)/gainHandle->getStripGain(clusterIter->firstStrip()+iamp, detGainRange);
+            }
+            noise2 += noise*noise;
+            nrnonzeroamplitudes++;
+          }
+        } // End loop over cluster amplitude
 
-	if (nrnonzeroamplitudes > 0) cluster_noise = sqrt(noise2/nrnonzeroamplitudes);
+        if (nrnonzeroamplitudes > 0) cluster_noise = sqrt(noise2/nrnonzeroamplitudes);
 
-	if( applyClusterQuality_ &&
-	    (cluster_signal/cluster_noise < sToNLowerLimit_ ||
-	     cluster_signal/cluster_noise > sToNUpperLimit_ ||
-	     cluster_width < widthLowerLimit_ ||
-	     cluster_width > widthUpperLimit_) ) continue;
+        if( applyClusterQuality_ &&
+            (cluster_signal/cluster_noise < sToNLowerLimit_ ||
+             cluster_signal/cluster_noise > sToNUpperLimit_ ||
+             cluster_width < widthLowerLimit_ ||
+             cluster_width > widthUpperLimit_) ) continue;
 
-	ClusterProperties cluster_properties;
-	cluster_properties.charge    = cluster_signal;
-	cluster_properties.position  = cluster_position;
-	cluster_properties.start     = cluster_start;
-	cluster_properties.width     = cluster_width;
-	cluster_properties.noise     = cluster_noise;
+        ClusterProperties cluster_properties;
+        cluster_properties.charge    = cluster_signal;
+        cluster_properties.position  = cluster_position;
+        cluster_properties.start     = cluster_start;
+        cluster_properties.width     = cluster_width;
+        cluster_properties.noise     = cluster_noise;
 
-	// Fill Module Level MEs
-	if (found_module_me) fillModuleMEs(mod_single, cluster_properties);
+        // Fill Module Level MEs
+        if (found_module_me) fillModuleMEs(mod_single, cluster_properties);
 
-	// Fill Layer Level MEs
-	if (found_layer_me) {
+        // Fill Layer Level MEs
+        if (found_layer_me) {
           fillLayerMEs(layer_single, cluster_properties);
-	  if (layerswitchclusterwidthprofon)
-	    layer_single.LayerClusterWidthProfile->Fill(iDet, cluster_width);
-	}
-	
-	if (subdetswitchcluschargeon || subdetswitchcluswidthon)
-	  {
-	    std::map<std::string, SubDetMEs>::iterator iSubdet  = SubDetMEsMap.find(subdet_label);
-	    if(iSubdet != SubDetMEsMap.end()) 
-	      {
-		if (subdetswitchcluschargeon) iSubdet->second.SubDetClusterChargeTH1->Fill(cluster_signal);
-		if (subdetswitchcluswidthon)  iSubdet->second.SubDetClusterWidthTH1->Fill(cluster_width);
-	      }
-	  }
+          if (layerswitchclusterwidthprofon)
+            layer_single.LayerClusterWidthProfile->Fill(iDet, cluster_width);
+        }
+
+        if (subdetswitchcluschargeon || subdetswitchcluswidthon)
+        {
+          std::map<std::string, SubDetMEs>::iterator iSubdet  = SubDetMEsMap.find(subdet_label);
+          if(iSubdet != SubDetMEsMap.end()) 
+          {
+            if (subdetswitchcluschargeon) iSubdet->second.SubDetClusterChargeTH1->Fill(cluster_signal);
+            if (subdetswitchcluswidthon)  iSubdet->second.SubDetClusterWidthTH1->Fill(cluster_width);
+          }
+        }
       } // end loop over clusters
 
       short total_nr_strips = SiStripDetCabling_->nApvPairs(detid) * 2 * 128; // get correct # of avp pairs
       float local_occupancy = static_cast<float>(total_clusterized_strips)/static_cast<float>(total_nr_strips);
       if (found_module_me) {
-	if(moduleswitchnrclusterizedstrip && mod_single.NrOfClusterizedStrips ){ // nr of clusterized strips
-	  mod_single.NrOfClusterizedStrips->Fill(static_cast<float>(total_clusterized_strips));
-	}
+        if(moduleswitchnrclusterizedstrip && mod_single.NrOfClusterizedStrips ){ // nr of clusterized strips
+          mod_single.NrOfClusterizedStrips->Fill(static_cast<float>(total_clusterized_strips));
+        }
 
-	if(moduleswitchlocaloccupancy && mod_single.ModuleLocalOccupancy ){ // Occupancy
-	  mod_single.ModuleLocalOccupancy->Fill(local_occupancy);
-	}
+        if(moduleswitchlocaloccupancy && mod_single.ModuleLocalOccupancy ){ // Occupancy
+          mod_single.ModuleLocalOccupancy->Fill(local_occupancy);
+        }
       }
       if (layerswitchlocaloccupancy && found_layer_me && layer_single.LayerLocalOccupancy) {
-	fillME(layer_single.LayerLocalOccupancy,local_occupancy);
-	if (createTrendMEs)
-	  fillME(layer_single.LayerLocalOccupancyTrend,trendVar,local_occupancy);
+        fillME(layer_single.LayerLocalOccupancy,local_occupancy);
+        if (createTrendMEs)
+          fillME(layer_single.LayerLocalOccupancyTrend,trendVar,local_occupancy);
       }
     }
     std::map<std::string, SubDetMEs>::iterator iSubdet  = SubDetMEsMap.find(subdet_label);
@@ -707,9 +734,9 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
   iEvent.getByToken(apvPhaseProducerToken_,apv_phase_collection);
 
   if (event_history.isValid()
-        && !event_history.failedToGet()
-        && apv_phase_collection.isValid()
-        && !apv_phase_collection.failedToGet()) {
+      && !event_history.failedToGet()
+      && apv_phase_collection.isValid()
+      && !apv_phase_collection.failedToGet()) {
 
 
     long long dbx        = event_history->deltaBX();
@@ -719,7 +746,7 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
     bool MultiplicityRegion_Vs_APVcycle_filled=false;
 
     for (std::map<std::string, SubDetMEs>::iterator it = SubDetMEsMap.begin();
-       it != SubDetMEsMap.end(); it++) {
+        it != SubDetMEsMap.end(); it++) {
       std::string sdet = it->first;
       //std::string sdet = sdet_tag.substr(0,sdet_tag.find_first_of("_"));
       SubDetMEs sdetmes = it->second;
@@ -727,12 +754,25 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
       int the_phase = APVCyclePhaseCollection::invalid;
       long long tbx_corr = tbx;
 
+
+      //Check DCS status
+      skipEvent = false;
+      if(dcsStatus_){
+        if(!statusTECB && sdet == "TEC__MINUS") skipEvent = true;
+        if(!statusTECF && sdet == "TEC__PLUS") skipEvent = true;
+        if(!statusTIBTID && (sdet == "TIB" ||
+              sdet == "TID__MINUS" ||
+              sdet == "TID__PLUS")) skipEvent = true;
+        if(!statusTOB && sdet == "TOB") skipEvent = true;
+      }
+      if(skipEvent) continue;
+
       if (SubDetPhasePartMap.find(sdet) != SubDetPhasePartMap.end()) the_phase = apv_phase_collection->getPhase(SubDetPhasePartMap[sdet]);
       if(the_phase==APVCyclePhaseCollection::nopartition ||
-         the_phase==APVCyclePhaseCollection::multiphase ||
-         the_phase==APVCyclePhaseCollection::invalid) {
-	the_phase=30;
-	//std::cout << " subdet " << it->first << " not valid" << " MR " << MultiplicityRegion <<std::endl;
+          the_phase==APVCyclePhaseCollection::multiphase ||
+          the_phase==APVCyclePhaseCollection::invalid) {
+        the_phase=30;
+        //std::cout << " subdet " << it->first << " not valid" << " MR " << MultiplicityRegion <<std::endl;
       }
       tbx_corr  -= the_phase;
       long long dbxincycle = event_history->deltaBXinCycle(the_phase);
@@ -742,39 +782,39 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
       }
 
       if (isPixValid && !MultiplicityRegion_Vs_APVcycle_filled){
-	if (globalswitchstripnoise2apvcycle && MultiplicityRegion==2) {StripNoise2Cycle->Fill(tbx_corr%70);}
-	if (globalswitchstripnoise3apvcycle && MultiplicityRegion==3) {StripNoise3Cycle->Fill(tbx_corr%70);}
-	MultiplicityRegion_Vs_APVcycle_filled=true;
+        if (globalswitchstripnoise2apvcycle && MultiplicityRegion==2) {StripNoise2Cycle->Fill(tbx_corr%70);}
+        if (globalswitchstripnoise3apvcycle && MultiplicityRegion==3) {StripNoise3Cycle->Fill(tbx_corr%70);}
+        MultiplicityRegion_Vs_APVcycle_filled=true;
       }
 
       if (subdetswitchtotclusth1on)
-	  sdetmes.SubDetTotClusterTH1->Fill(sdetmes.totNClusters);
+        sdetmes.SubDetTotClusterTH1->Fill(sdetmes.totNClusters);
       if (subdetswitchtotclusprofon)
-	  sdetmes.SubDetTotClusterProf->Fill(trendVar,sdetmes.totNClusters);
+        sdetmes.SubDetTotClusterProf->Fill(trendVar,sdetmes.totNClusters);
       if (subdetswitchapvcycleprofon)
-	sdetmes.SubDetClusterApvProf->Fill(tbx_corr%70,sdetmes.totNClusters);
+        sdetmes.SubDetClusterApvProf->Fill(tbx_corr%70,sdetmes.totNClusters);
       if (subdetswitchapvcycleth2on)
-	sdetmes.SubDetClusterApvTH2->Fill(tbx_corr%70,sdetmes.totNClusters);
+        sdetmes.SubDetClusterApvTH2->Fill(tbx_corr%70,sdetmes.totNClusters);
       if (subdetswitchdbxcycleprofon)
-	sdetmes.SubDetClusterDBxCycleProf->Fill(dbxincycle,sdetmes.totNClusters);
+        sdetmes.SubDetClusterDBxCycleProf->Fill(dbxincycle,sdetmes.totNClusters);
       if (subdetswitchapvcycledbxprof2on)
-	sdetmes.SubDetApvDBxProf2->Fill(tbx_corr%70,dbx,sdetmes.totNClusters);
+        sdetmes.SubDetApvDBxProf2->Fill(tbx_corr%70,dbx,sdetmes.totNClusters);
     }
 
     if ( globalswitchnclusvscycletimeprof2don )
-      {
-	long long tbx_corr = tbx;
-	int the_phase = apv_phase_collection->getPhase("All");
-	
-	if( the_phase == APVCyclePhaseCollection::nopartition ||
-	    the_phase == APVCyclePhaseCollection::multiphase ||
-	    the_phase == APVCyclePhaseCollection::invalid )
-	  the_phase=30;
-	
-	tbx_corr -= the_phase;
+    {
+      long long tbx_corr = tbx;
+      int the_phase = apv_phase_collection->getPhase("All");
 
-	NclusVsCycleTimeProf2D->Fill( tbx_corr%70 , (int)event_history->_orbit , NStripClusters );
-      }
+      if( the_phase == APVCyclePhaseCollection::nopartition ||
+          the_phase == APVCyclePhaseCollection::multiphase ||
+          the_phase == APVCyclePhaseCollection::invalid )
+        the_phase=30;
+
+      tbx_corr -= the_phase;
+
+      NclusVsCycleTimeProf2D->Fill( tbx_corr%70 , (int)event_history->_orbit , NStripClusters );
+    }
   }
 }
 //
@@ -868,13 +908,13 @@ void SiStripMonitorCluster::createModuleMEs(ModMEs& mod_single, uint32_t detid ,
     hid = hidmanager.createHistoId("ClusterSignalOverNoiseVsPos","det",detid);
     Parameters =  conf_.getParameter<edm::ParameterSet>("TH1ClusterStoNVsPos");
     mod_single.ClusterSignalOverNoiseVsPos= ibooker.bookProfile(hid.c_str(),hid.c_str(),
-								 Parameters.getParameter<int32_t>("Nbinx"),
-								 Parameters.getParameter<double>("xmin"),
-								 Parameters.getParameter<double>("xmax"),
-								 Parameters.getParameter<int32_t>("Nbiny"),
-								 Parameters.getParameter<double>("ymin"),
-								 Parameters.getParameter<double>("ymax")
-								 );
+        Parameters.getParameter<int32_t>("Nbinx"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        Parameters.getParameter<int32_t>("Nbiny"),
+        Parameters.getParameter<double>("ymin"),
+        Parameters.getParameter<double>("ymax")
+        );
     ibooker.tag(mod_single.ClusterSignalOverNoiseVsPos, detid);
     mod_single.ClusterSignalOverNoiseVsPos->setAxisTitle("pos");
   }
@@ -1008,10 +1048,10 @@ void SiStripMonitorCluster::createSubDetMEs(std::string label , DQMStore::IBooke
     edm::ParameterSet Parameters = trendVsLs_ ? conf_.getParameter<edm::ParameterSet>("TrendingLS") : conf_.getParameter<edm::ParameterSet>("Trending");
     HistoName = "TotalNumberOfClusterProfile__" + label;
     subdetMEs.SubDetTotClusterProf = ibooker.bookProfile(HistoName,HistoName,
-							 Parameters.getParameter<int32_t>("Nbins"),
-							 Parameters.getParameter<double>("xmin"),
-							 Parameters.getParameter<double>("xmax"),
-							 0 , 0 , "" );
+        Parameters.getParameter<int32_t>("Nbins"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        0 , 0 , "" );
     subdetMEs.SubDetTotClusterProf->setAxisTitle(Parameters.getParameter<std::string>("xaxis"),1);
     if (subdetMEs.SubDetTotClusterProf->kind() == MonitorElement::DQM_KIND_TPROFILE) subdetMEs.SubDetTotClusterProf->getTH1()->SetBit(TH1::kCanRebin);
   }
@@ -1021,13 +1061,13 @@ void SiStripMonitorCluster::createSubDetMEs(std::string label , DQMStore::IBooke
     edm::ParameterSet Parameters =  conf_.getParameter<edm::ParameterSet>("TProfClustersApvCycle");
     HistoName = "Cluster_vs_ApvCycle__" + label;
     subdetMEs.SubDetClusterApvProf=ibooker.bookProfile(HistoName,HistoName,
-							  Parameters.getParameter<int32_t>("Nbins"),
-							  Parameters.getParameter<double>("xmin"),
-							  Parameters.getParameter<double>("xmax"),
-							  200, //that parameter should not be there !?
-							  Parameters.getParameter<double>("ymin"),
-							  Parameters.getParameter<double>("ymax"),
-							  "" );
+        Parameters.getParameter<int32_t>("Nbins"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        200, //that parameter should not be there !?
+        Parameters.getParameter<double>("ymin"),
+        Parameters.getParameter<double>("ymax"),
+        "" );
     subdetMEs.SubDetClusterApvProf->setAxisTitle("Apv Cycle (Corrected Absolute Bx % 70)",1);
   }
 
@@ -1044,12 +1084,12 @@ void SiStripMonitorCluster::createSubDetMEs(std::string label , DQMStore::IBooke
     else if (label.find("TEC") != std::string::npos) h2ymax = (7552.*2.*256.)*yfact;
 
     subdetMEs.SubDetClusterApvTH2=ibooker.book2D(HistoName,HistoName,
-						    Parameters.getParameter<int32_t>("Nbinsx"),
-						    Parameters.getParameter<double>("xmin"),
-						    Parameters.getParameter<double>("xmax"),
-						    Parameters.getParameter<int32_t>("Nbinsy"),
-						    Parameters.getParameter<double>("ymin"),
-						    h2ymax);
+        Parameters.getParameter<int32_t>("Nbinsx"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        Parameters.getParameter<int32_t>("Nbinsy"),
+        Parameters.getParameter<double>("ymin"),
+        h2ymax);
     subdetMEs.SubDetClusterApvTH2->setAxisTitle("Apv Cycle (Corrected Absolute Bx % 70))",1);
     subdetMEs.SubDetClusterApvTH2->setAxisTitle("Total # of Clusters",2);
 
@@ -1059,13 +1099,13 @@ void SiStripMonitorCluster::createSubDetMEs(std::string label , DQMStore::IBooke
     edm::ParameterSet Parameters =  conf_.getParameter<edm::ParameterSet>("TProfClustersVsDBxCycle");
     HistoName = "Cluster_vs_DeltaBxCycle__" + label;
     subdetMEs.SubDetClusterDBxCycleProf = ibooker.bookProfile(HistoName,HistoName,
-								 Parameters.getParameter<int32_t>("Nbins"),
-								 Parameters.getParameter<double>("xmin"),
-								 Parameters.getParameter<double>("xmax"),
-								 200, //that parameter should not be there !?
-								 Parameters.getParameter<double>("ymin"),
-								 Parameters.getParameter<double>("ymax"),
-								 "" );
+        Parameters.getParameter<int32_t>("Nbins"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        200, //that parameter should not be there !?
+        Parameters.getParameter<double>("ymin"),
+        Parameters.getParameter<double>("ymax"),
+        "" );
     subdetMEs.SubDetClusterDBxCycleProf->setAxisTitle("Delta Bunch Crossing Cycle",1);
   }
   // DeltaBx vs ApvCycle - 2DProfile
@@ -1073,15 +1113,15 @@ void SiStripMonitorCluster::createSubDetMEs(std::string label , DQMStore::IBooke
     edm::ParameterSet Parameters =  conf_.getParameter<edm::ParameterSet>("TProf2ApvCycleVsDBx");
     HistoName = "DeltaBx_vs_ApvCycle__" + label;
     subdetMEs.SubDetApvDBxProf2 = ibooker.bookProfile2D(HistoName,HistoName,
-							   Parameters.getParameter<int32_t>("Nbinsx"),
-							   Parameters.getParameter<double>("xmin"),
-							   Parameters.getParameter<double>("xmax"),
-							   Parameters.getParameter<int32_t>("Nbinsy"),
-							   Parameters.getParameter<double>("ymin"),
-							   Parameters.getParameter<double>("ymax"),
-							   Parameters.getParameter<double>("zmin"),
-							   Parameters.getParameter<double>("zmax"),
-							   "" );
+        Parameters.getParameter<int32_t>("Nbinsx"),
+        Parameters.getParameter<double>("xmin"),
+        Parameters.getParameter<double>("xmax"),
+        Parameters.getParameter<int32_t>("Nbinsy"),
+        Parameters.getParameter<double>("ymin"),
+        Parameters.getParameter<double>("ymax"),
+        Parameters.getParameter<double>("zmin"),
+        Parameters.getParameter<double>("zmax"),
+        "" );
     subdetMEs.SubDetApvDBxProf2->setAxisTitle("APV Cycle (Corrected Absolute Bx % 70)",1);
     subdetMEs.SubDetApvDBxProf2->setAxisTitle("Delta Bunch Crossing Cycle",2);
   }
@@ -1131,29 +1171,29 @@ void SiStripMonitorCluster::fillLayerMEs(LayerMEs& layerMEs, ClusterProperties& 
   if(layerswitchclusstonon) {
     fillME(layerMEs.LayerClusterStoN  ,cluster.charge/cluster.noise);
     if (createTrendMEs) {
-	fillME(layerMEs.LayerClusterStoNTrend,trendVar,cluster.charge/cluster.noise);
-      }
+      fillME(layerMEs.LayerClusterStoNTrend,trendVar,cluster.charge/cluster.noise);
+    }
   }
 
   if(layerswitchcluschargeon) {
     fillME(layerMEs.LayerClusterCharge,cluster.charge);
     if (createTrendMEs) {
-	fillME(layerMEs.LayerClusterChargeTrend,trendVar,cluster.charge);
-      }
+      fillME(layerMEs.LayerClusterChargeTrend,trendVar,cluster.charge);
+    }
   }
 
   if(layerswitchclusnoiseon) {
     fillME(layerMEs.LayerClusterNoise ,cluster.noise);
     if (createTrendMEs) {
-	fillME(layerMEs.LayerClusterNoiseTrend,trendVar,cluster.noise);
-      }
+      fillME(layerMEs.LayerClusterNoiseTrend,trendVar,cluster.noise);
+    }
   }
 
   if(layerswitchcluswidthon) {
     fillME(layerMEs.LayerClusterWidth ,cluster.width);
     if (createTrendMEs) {
-	fillME(layerMEs.LayerClusterWidthTrend,trendVar,cluster.width);
-      }
+      fillME(layerMEs.LayerClusterWidthTrend,trendVar,cluster.width);
+    }
   }
 
 }
@@ -1162,10 +1202,10 @@ MonitorElement* SiStripMonitorCluster::bookMETrend(const char* HistoName , DQMSt
 {
   edm::ParameterSet ParametersTrend = trendVsLs_ ? conf_.getParameter<edm::ParameterSet>("TrendingLS") : conf_.getParameter<edm::ParameterSet>("Trending");
   MonitorElement* me = ibooker.bookProfile(HistoName,HistoName,
-					   ParametersTrend.getParameter<int32_t>("Nbins"),
-					   ParametersTrend.getParameter<double>("xmin"),
-					   ParametersTrend.getParameter<double>("xmax"),
-					   0 , 0 , "" );
+      ParametersTrend.getParameter<int32_t>("Nbins"),
+      ParametersTrend.getParameter<double>("xmin"),
+      ParametersTrend.getParameter<double>("xmax"),
+      0 , 0 , "" );
   if(!me) return me;
   me->setAxisTitle(ParametersTrend.getParameter<std::string>("xaxis"),1);
   if (me->kind() == MonitorElement::DQM_KIND_TPROFILE) me->getTH1()->SetBit(TH1::kCanRebin);
@@ -1177,10 +1217,10 @@ MonitorElement* SiStripMonitorCluster::bookME1D(const char* ParameterSetLabel, c
 {
   Parameters =  conf_.getParameter<edm::ParameterSet>(ParameterSetLabel);
   return ibooker.book1D(HistoName,HistoName,
-			   Parameters.getParameter<int32_t>("Nbinx"),
-			   Parameters.getParameter<double>("xmin"),
-			   Parameters.getParameter<double>("xmax")
-			   );
+      Parameters.getParameter<int32_t>("Nbinx"),
+      Parameters.getParameter<double>("xmin"),
+      Parameters.getParameter<double>("xmax")
+      );
 }
 
 int SiStripMonitorCluster::FindRegion(int nstrip,int npix){

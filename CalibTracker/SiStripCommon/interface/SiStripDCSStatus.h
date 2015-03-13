@@ -17,6 +17,7 @@ class SiStripDCSStatus {
  ~SiStripDCSStatus();
 
   bool getStatus(edm::Event const& e, edm::EventSetup const& eSetup);
+  void getStatusPartition(edm::Event const& e, edm::EventSetup const& eSetup, bool& tmp_statusTIBTID, bool& tmp_statusTOB, bool& tmp_statusTECF, bool& tmp_statusECF);
 
  private: 
 

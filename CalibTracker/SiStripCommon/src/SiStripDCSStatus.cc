@@ -27,9 +27,13 @@ SiStripDCSStatus::SiStripDCSStatus(edm::ConsumesCollector & iC) :
   TOBinDAQ(false),
   TECFinDAQ(false),
   TECBinDAQ(false),
+  statusTIBTID(true),
+  statusTOB(true),
+  statusTECF(true),
+  statusTECB(true),
   trackerAbsent(false),
   rawdataAbsent(true),
-  initialised(false) {
+    initialised(false) {
 
   dcsStatusToken_ = iC.consumes<DcsStatusCollection>(edm::InputTag("scalersRawToDigi"));
   rawDataToken_   = iC.consumes<FEDRawDataCollection>(edm::InputTag("source"));
@@ -94,6 +98,16 @@ bool SiStripDCSStatus::getStatus(edm::Event const& e, edm::EventSetup const& eSe
   else retVal = false;
   LogDebug("SiStripDCSStatus") << " Return Value " << retVal ;
   return retVal;
+}
+//
+// -- Get State for each partition
+//
+void SiStripDCSStatus::getStatusPartition(edm::Event const& e, edm::EventSetup const& eSetup, bool& tmp_statusTIBTID, bool& tmp_statusTOB, bool& tmp_statusTECF, bool& tmp_statusTECB) {
+		getStatus(e, eSetup); //look at each partition status
+		tmp_statusTIBTID = statusTIBTID; //update each status
+		tmp_statusTOB = statusTOB;
+		tmp_statusTECF = statusTECF;
+		tmp_statusTECB = statusTECB;	
 }
 //
 // -- initialise
