@@ -50,8 +50,6 @@ class SiStripDaqInfo: public edm::EDAnalyzer {
 
  private:
 
-  /// BeginJob
-  void beginJob();
 
   /// Begin Run
   void beginRun(edm::Run const& run, edm::EventSetup const& eSetup);

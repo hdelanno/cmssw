@@ -88,8 +88,6 @@ private:
   edm::InputTag rawDataTag_;
   edm::EDGetTokenT<FEDRawDataCollection> rawDataToken_;
 
-  std::string outputFilePath_;
-  std::string outputFileName_;
 
   edm::ParameterSet tkMapPSet_;
   edm::ESHandle< SiStripFedCabling > fedCabling_;

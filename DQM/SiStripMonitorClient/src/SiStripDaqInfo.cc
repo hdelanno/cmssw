@@ -45,12 +45,6 @@ SiStripDaqInfo::~SiStripDaqInfo() {
 
 }
 //
-// -- Begin Job
-//
-void SiStripDaqInfo::beginJob() {
- 
-}
-//
 // -- Book MEs for SiStrip Daq Fraction
 //
 void SiStripDaqInfo::bookStatus() {

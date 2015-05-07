@@ -85,16 +85,6 @@ void SiStripMonitorTrack::bookHistograms(DQMStore::IBooker & ibooker , const edm
   const TrackerTopology* const tTopo = tTopoHandle.product();
   book(ibooker , tTopo);
 }
-
-//------------------------------------------------------------------------
-void SiStripMonitorTrack::endJob(void)
-{
-  if(conf_.getParameter<bool>("OutputMEsInRootFile")){
-    //dbe->showDirStructure();
-    dbe->save(conf_.getParameter<std::string>("OutputFileName"));
-  }
-}
-
 // ------------ method called to produce the data  ------------
 void SiStripMonitorTrack::analyze(const edm::Event& e, const edm::EventSetup& es)
 {

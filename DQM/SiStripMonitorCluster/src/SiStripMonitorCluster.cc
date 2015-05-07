@@ -743,16 +743,6 @@ void SiStripMonitorCluster::analyze(const edm::Event& iEvent, const edm::EventSe
   }
 }
 //
-// -- EndJob
-//
-void SiStripMonitorCluster::endJob(void){
-  bool outputMEsInRootFile = conf_.getParameter<bool>("OutputMEsInRootFile");
-  std::string outputFileName = conf_.getParameter<std::string>("OutputFileName");
-
-  // save histos in a file
-  if(outputMEsInRootFile) dqmStore_->save(outputFileName);
-}
-//
 // -- Reset MEs
 //------------------------------------------------------------------------------
 void SiStripMonitorCluster::ResetModuleMEs(uint32_t idet){

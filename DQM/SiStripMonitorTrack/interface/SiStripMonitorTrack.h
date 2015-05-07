@@ -65,7 +65,6 @@ public:
   explicit SiStripMonitorTrack(const edm::ParameterSet&);
   ~SiStripMonitorTrack();
   void dqmBeginRun(const edm::Run& run, const edm::EventSetup& es) ;
-  virtual void endJob(void);
   virtual void analyze(const edm::Event&, const edm::EventSetup&);
   void bookHistograms(DQMStore::IBooker &, edm::Run const &, edm::EventSetup const &) override;
 

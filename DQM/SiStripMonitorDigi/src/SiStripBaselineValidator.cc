@@ -37,9 +37,6 @@ using namespace std;
 SiStripBaselineValidator::SiStripBaselineValidator(const edm::ParameterSet& conf){
 
   srcProcessedRawDigi_ =  conf.getParameter<edm::InputTag>( "srcProcessedRawDigi" );
-  createOutputFile_ = conf.getUntrackedParameter<bool>("saveFile",false);
-  outputFile_   = conf.getParameter<std::string>("outputFile");
-  dbe = &*edm::Service<DQMStore>();
   moduleRawDigiToken_ = consumes<edm::DetSetVector<SiStripRawDigi> >(conf.getParameter<edm::InputTag>( "srcProcessedRawDigi" ) );
 
 
@@ -64,13 +61,6 @@ void SiStripBaselineValidator::bookHistograms(DQMStore::IBooker & ibooker, const
   
   return;
 }
-
-// ------------ method called once each job just before starting event loop  ------------
-void SiStripBaselineValidator::beginJob()
-{
-
-}
-
 void SiStripBaselineValidator::analyze(const edm::Event& e, const edm::EventSetup& es)
 {
   edm::Handle< edm::DetSetVector<SiStripRawDigi> > moduleRawDigi;
@@ -114,17 +104,6 @@ void SiStripBaselineValidator::analyze(const edm::Event& e, const edm::EventSetu
 
 
 } /// analyzer loop
-
-
-
-// ------------ method called once each job just after ending the event loop  ------------
-void 
-SiStripBaselineValidator::endJob() {
-
-    if (!outputFile_.empty() && createOutputFile_) {
-       dbe->save(outputFile_);
-    }  
-}
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(SiStripBaselineValidator);

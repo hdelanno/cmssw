@@ -79,7 +79,6 @@ private:
 
   bool createSummary_;
   std::string inputFileName_;
-  std::string outputFileName_;
   int globalStatusFilling_; 
   bool usedWithEDMtoMEConverter_;
   int nEvents_;

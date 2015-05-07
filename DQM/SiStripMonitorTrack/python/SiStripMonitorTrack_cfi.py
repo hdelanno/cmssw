@@ -14,9 +14,6 @@ SiStripMonitorTrack = cms.EDAnalyzer(
     RawDigiProducer = cms.string('simSiStripDigis'),
     RawDigiLabel    = cms.string('VirginRaw'),
     
-    OutputMEsInRootFile = cms.bool(False),
-    OutputFileName = cms.string('test_monitortrackparameters_rs.root'),    
-    
     Cluster_src = cms.InputTag('siStripClusters'),
     
     ModulesToBeExcluded = cms.vuint32(),
