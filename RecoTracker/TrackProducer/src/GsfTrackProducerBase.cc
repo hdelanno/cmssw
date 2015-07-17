@@ -128,12 +128,14 @@ GsfTrackProducerBase::putInEvt(edm::Event& evt,
     assert(ih==hidx);
     t2t(*theTraj,*selHits,useSplitting);
     auto ie = selHits->size();
+    unsigned int nHitsAdded = 0;
     for (;ih<ie; ++ih) {
       auto const & hit = (*selHits)[ih];
       track.appendHitPattern(hit);
-      tx.add( TrackingRecHitRef( rHits, hidx ++ ) );
+      ++nHitsAdded;
     }
-
+    tx.setHits(rHits, hidx, nHitsAdded);
+    hidx += nHitsAdded;
 
     /*
     TrajectoryFitter::RecHitContainer transHits; theTraj->recHitsV(transHits,useSplitting);
@@ -250,7 +252,7 @@ GsfTrackProducerBase::putInEvt(edm::Event& evt,
     edm::OrphanHandle<std::vector<Trajectory> > rTrajs = evt.put(selTrajectories);
 
     // Now Create traj<->tracks association map
-    std::auto_ptr<TrajGsfTrackAssociationCollection> trajTrackMap( new TrajGsfTrackAssociationCollection() );
+    std::auto_ptr<TrajGsfTrackAssociationCollection> trajTrackMap( new TrajGsfTrackAssociationCollection(rTrajs, rTracks_) );
     for ( std::map<unsigned int, unsigned int>::iterator i = tjTkMap.begin(); 
 	  i != tjTkMap.end(); i++ ) {
       edm::Ref<std::vector<Trajectory> > trajRef( rTrajs, (*i).first );

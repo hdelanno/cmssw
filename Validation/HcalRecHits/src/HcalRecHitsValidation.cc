@@ -545,13 +545,13 @@ void HcalRecHitsValidation::bookHistograms(DQMStore::IBooker &ib, edm::Run const
       meTE_Low_HE = ib.book2D(histo, histo, 80, -5., 75.,  70, -48., 92.);
 
       sprintf (histo, "HcalRecHitTask_timing_vs_energy_HE" ) ;
-      meTE_HE = ib.book2D(histo, histo, 200, -5., 395.,  70, -48., 92.);
+      meTE_HE = ib.book2D(histo, histo, 200, -5., 2995.,  70, -48., 92.);
       
       sprintf (histo, "HcalRecHitTask_timing_vs_energy_profile_Low_HE" ) ;
       meTEprofileHE_Low = ib.bookProfile(histo, histo, 80, -5., 75., 70, -48., 92.); 
 
       sprintf (histo, "HcalRecHitTask_timing_vs_energy_profile_HE" ) ;
-      meTEprofileHE = ib.bookProfile(histo, histo, 200, -5., 395., 70, -48., 92.); 
+      meTEprofileHE = ib.bookProfile(histo, histo, 200, -5., 2995., 70, -48., 92.); 
 
       //Timing by depth and rechits vs simhits are not drawn
       if (useAllHistos_){
@@ -1598,11 +1598,11 @@ void HcalRecHitsValidation::fillRecHitsTmp(int subdet_, edm::Event const& ev){
       int stwd    = j->flags();
       int auxstwd = j->aux();
       
-      int serivityLevel = hcalSevLvl( (CaloRecHit*) &*j );
+      int severityLevel = hcalSevLvl( (CaloRecHit*) &*j );
       if( cell.subdet()==HcalBarrel ){
-         hcalHBSevLvlVec.push_back(serivityLevel);
+         hcalHBSevLvlVec.push_back(severityLevel);
       }else if (cell.subdet()==HcalEndcap ){
-         hcalHESevLvlVec.push_back(serivityLevel);
+         hcalHESevLvlVec.push_back(severityLevel);
       } 
       
       if((iz > 0 && eta > 0.) || (iz < 0 && eta <0.) || iz == 0) { 
@@ -1646,9 +1646,9 @@ void HcalRecHitsValidation::fillRecHitsTmp(int subdet_, edm::Event const& ev){
       int stwd     = j->flags();
       int auxstwd  = j->aux();
 
-      int serivityLevel = hcalSevLvl( (CaloRecHit*) &*j );
+      int severityLevel = hcalSevLvl( (CaloRecHit*) &*j );
       if( cell.subdet()==HcalForward ){
-         hcalHFSevLvlVec.push_back(serivityLevel);
+         hcalHFSevLvlVec.push_back(severityLevel);
       } 
 
       if((iz > 0 && eta > 0.) || (iz < 0 && eta <0.) || iz == 0) { 
@@ -1691,9 +1691,9 @@ void HcalRecHitsValidation::fillRecHitsTmp(int subdet_, edm::Event const& ev){
       int stwd     = j->flags();
       int auxstwd  = j->aux();
 
-      int serivityLevel = hcalSevLvl( (CaloRecHit*) &*j );
+      int severityLevel = hcalSevLvl( (CaloRecHit*) &*j );
       if( cell.subdet()==HcalOuter ){
-         hcalHOSevLvlVec.push_back(serivityLevel);
+         hcalHOSevLvlVec.push_back(severityLevel);
       } 
       
       if((iz > 0 && eta > 0.) || (iz < 0 && eta <0.) || iz == 0) { 

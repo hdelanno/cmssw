@@ -227,11 +227,8 @@ if __name__ == '__main__':
     if options.library is None:
         if 0 != ROOT.gSystem.Load("libFWCoreFWLite"):
             raise RuntimeError("failed to load libFWCoreFWLite")
-        ROOT.AutoLibraryLoader.enable()
+        ROOT.fwlite.enable()
     else:
-        if 0 != ROOT.gSystem.Load("libCintex"):
-            raise RuntimeError("failed to load libCintex")
-        ROOT.Cintex.Enable()
         if 0 != ROOT.gSystem.Load(options.library):
             raise RuntimeError("failed to load library '"+options.library+"'")
 

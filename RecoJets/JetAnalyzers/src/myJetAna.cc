@@ -12,7 +12,7 @@
 #include "DataFormats/METReco/interface/CaloMET.h"
 
 #include "DataFormats/Common/interface/Handle.h"
-#include "RecoLocalCalo/HcalRecAlgos/interface/HcalCaloFlagLabels.h"
+#include "DataFormats/METReco/interface/HcalCaloFlagLabels.h"
 
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
 #include "DataFormats/HcalRecHit/interface/HcalSourcePositionData.h"
@@ -67,10 +67,9 @@
 // #include "DataFormats/Scalers/interface/DcsStatus.h"
 
 // include files
-#include "CommonTools/RecoAlgos/interface/HBHENoiseFilter.h"
 #include "DataFormats/METReco/interface/HcalNoiseSummary.h"
 
-#include "RecoLocalCalo/HcalRecAlgos/interface/HcalCaloFlagLabels.h"  
+#include "DataFormats/METReco/interface/HcalCaloFlagLabels.h"  
 
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -1005,7 +1004,7 @@ void myJetAna::analyze( const edm::Event& evt, const edm::EventSetup& es ) {
   // **************************
   // ***  Pass Vertex
   // **************************
-  double VTX;
+  double VTX = 0.;
   int nVTX;
 
   edm::Handle<reco::VertexCollection> vertexCollection;

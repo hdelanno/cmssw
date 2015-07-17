@@ -154,8 +154,8 @@ process.load("Validation.RecoTrack.cutsTPFake_cfi")
 #process.cutsTPEffic.src = cms.InputTag("mix")
 #process.cutsTPFake.src = cms.InputTag("mix")
 
-process.load("SimTracker.TrackAssociation.TrackAssociatorByChi2_cfi")
-process.load("SimTracker.TrackAssociation.TrackAssociatorByHits_cfi")
+process.load("SimTracker.TrackAssociatorProducers.trackAssociatorByChi2_cfi")
+process.load("SimTracker.TrackAssociatorProducers.trackAssociatorByHits_cfi")
 process.TrackAssociatorByHits.ROUList = ['famosSimHitsTrackerHits']
 
 process.load("Validation.RecoTrack.MultiTrackValidator_cff")
@@ -165,14 +165,13 @@ process.multiTrackValidator.label = ['ctfWithMaterialTracks']
 #process.multiTrackValidator.label = ['cutsRecoTracks']
 #process.multiTrackValidator.label_tp_effic = cms.InputTag("cutsTPEffic")
 #process.multiTrackValidator.label_tp_fake = cms.InputTag("cutsTPFake")
-process.multiTrackValidator.sim = 'famosSimHits'
-process.multiTrackValidator.associators = ['TrackAssociatorByHits']
+process.multiTrackValidator.sim = ['famosSimHits']
+process.multiTrackValidator.associators = ['trackAssociatorByHits']
 process.multiTrackValidator.UseAssociators = True
 process.multiTrackValidator.outputFile = "validstdgeom_muon_50GeV.root"
 process.multiTrackValidator.nint = cms.int32(20)
 process.multiTrackValidator.nintpT = cms.int32(25)
 process.multiTrackValidator.maxpT = cms.double(50.0)
-process.multiTrackValidator.skipHistoFit = False
 ##### with John's changes ##############################
 process.load("SLHCUpgradeSimulations.Geometry.oldTracking_wtriplets")
 #process.PixelLayerTriplets.layerList = cms.vstring('BPix1+BPix2+BPix3',
@@ -299,8 +298,8 @@ process.p2 = cms.Path(process.trDigi*process.trackingParticles)
 process.p3 = cms.Path(process.pixeltrackerlocalreco)
 process.p6 = cms.Path(process.oldTracking_wtriplets)
 #process.p6 = cms.Path(process.offlineBeamSpot+process.recopixelvertexing*process.ckftracks)
-process.p8 = cms.Path(process.cutsTPEffic*process.cutsTPFake*process.multiTrackValidator)
-#process.p8 = cms.Path(process.cutsTPEffic*process.cutsTPFake*process.cutsRecoTracks*process.multiTrackValidator)
+process.p8 = cms.Path(process.cutsTPEffic*process.cutsTPFake*process.trackAssociatorByHits*process.multiTrackValidator)
+#process.p8 = cms.Path(process.cutsTPEffic*process.cutsTPFake*process.cutsRecoTracks*process.trackAssociatorByHits*process.multiTrackValidator)
 process.p9 = cms.Path(process.NeutRad)
 #process.schedule = cms.Schedule(process.p1,process.p2,process.p3,process.p6,process.p8,process.p9,process.outpath)
 process.schedule = cms.Schedule(process.p0,process.p1,process.p2,process.p3,process.p6,process.p8,process.p9)

@@ -1,9 +1,12 @@
 import FWCore.ParameterSet.Config as cms
 
+# This is used to modify parameters for Run 2 (see bottom of file)
+from Configuration.StandardSequences.Eras import eras
+
 #Global fast calorimetry parameters
 from FastSimulation.Calorimetry.HcalResponse_cfi import *
 from FastSimulation.Calorimetry.HSParameters_cfi import *
-from FastSimulation.Configuration.CommonInputs_cff import *
+#from FastSimulation.Configuration.CommonInputs_cff import *
 FamosCalorimetryBlock = cms.PSet(
     Calorimetry = cms.PSet(
         HSParameterBlock,
@@ -255,12 +258,16 @@ FamosCalorimetryBlock = cms.PSet(
             ietaShiftHF = cms.int32(29),
             timeShiftHF = cms.vdouble(50.7, 52.5, 52.9, 53.9, 54.5, 55.1, 55.1, 55.7, 55.9, 56.1, 56.1, 56.1, 56.5),
             ),
+            HFShower           = cms.PSet(
+              ProbMax          = cms.double(1.0),
+              CFibre           = cms.double(0.5),
+              OnlyLong          = cms.bool(True)
+            ),
             HFShowerLibrary    = cms.PSet(
               useShowerLibrary = cms.untracked.bool(False),
-              FileName = cms.FileInPath('SimG4CMS/Calo/data/HFShowerLibrary_npmt_noatt_eta4_16en_v2.root'),
-              ProbMax          = cms.double(1.0),
+              useCorrectionSL  = cms.untracked.bool(True),
+              FileName = cms.FileInPath('SimG4CMS/Calo/data/HFShowerLibrary_npmt_noatt_eta4_16en_v3.root'),
               BackProbability  = cms.double(0.2),
-              CFibre           = cms.double(0.5),
               TreeEMID         = cms.string('emParticles'),
               TreeHadID        = cms.string('hadParticles'),
               Verbosity        = cms.untracked.bool(False),
@@ -285,12 +292,10 @@ FamosCalorimetryBlock = cms.PSet(
     )
 )
 
-if(CaloMode == 1 ):
-    FamosCalorimetryBlock.Calorimetry.ECAL.Digitizer = True
-    
-if(CaloMode == 2 ):
-    FamosCalorimetryBlock.Calorimetry.HCAL.Digitizer = True
+FamosCalorimetryBlock.Calorimetry.ECAL.Digitizer = True
+FamosCalorimetryBlock.Calorimetry.HCAL.Digitizer = True
 
-if(CaloMode == 3 ):
-    FamosCalorimetryBlock.Calorimetry.ECAL.Digitizer = True
-    FamosCalorimetryBlock.Calorimetry.HCAL.Digitizer = True
+#
+# Modify for running in Run 2
+#
+eras.run2_common.toModify( FamosCalorimetryBlock.Calorimetry.HFShowerLibrary, useShowerLibrary=True )

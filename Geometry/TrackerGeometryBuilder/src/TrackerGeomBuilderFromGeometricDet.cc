@@ -9,6 +9,7 @@
 #include "Geometry/TrackerGeometryBuilder/interface/StripGeomDetUnit.h"
 #include "Geometry/TrackerGeometryBuilder/interface/PixelTopologyBuilder.h"
 #include "Geometry/TrackerGeometryBuilder/interface/StripTopologyBuilder.h"
+#include "CondFormats/GeometryObjects/interface/PTrackerParameters.h"
 #include "DataFormats/DetId/interface/DetId.h"
 #include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
 #include "DataFormats/GeometrySurface/interface/MediumProperties.h"
@@ -37,19 +38,10 @@ namespace {
 }
 
 TrackerGeometry*
-TrackerGeomBuilderFromGeometricDet::build( const GeometricDet* gd, const edm::ParameterSet& pSet )
+TrackerGeomBuilderFromGeometricDet::build( const GeometricDet* gd, const PTrackerParameters& ptp )
 {
-  bool upgradeGeometry = false;
-  int BIG_PIX_PER_ROC_X = 1;
-  int BIG_PIX_PER_ROC_Y = 2;
-  
-  if( pSet.exists( "trackerGeometryConstants" ))
-  {
-    const edm::ParameterSet tkGeomConsts( pSet.getParameter<edm::ParameterSet>( "trackerGeometryConstants" ));
-    upgradeGeometry = tkGeomConsts.getParameter<bool>( "upgradeGeometry" );  
-    BIG_PIX_PER_ROC_X = tkGeomConsts.getParameter<int>( "BIG_PIX_PER_ROC_X" );
-    BIG_PIX_PER_ROC_Y = tkGeomConsts.getParameter<int>( "BIG_PIX_PER_ROC_Y" );
-  }
+  int BIG_PIX_PER_ROC_X = ptp.vpars[2];
+  int BIG_PIX_PER_ROC_Y = ptp.vpars[3];
     
   thePixelDetTypeMap.clear();
   theStripDetTypeMap.clear();
@@ -91,37 +83,37 @@ TrackerGeomBuilderFromGeometricDet::build( const GeometricDet* gd, const edm::Pa
   for(unsigned int i=0;i<6;++i) {
     if(gdsubdetmap[i] == GeometricDet::PixelBarrel) 
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::PixelBarrel,
-		 upgradeGeometry,
+		 false,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::PixelPhase1Barrel) 
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::P1PXB,
-		 upgradeGeometry,
+		 true,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::PixelEndCap)
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::PixelEndcap,
-		 upgradeGeometry,
+		 false,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::PixelPhase1EndCap)
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::P1PXEC,
-		 upgradeGeometry,
+		 true,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::PixelPhase2EndCap)
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::P2PXEC,
-		 upgradeGeometry,
+		 true,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::OTPhase2Barrel) 
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::P2OTB,
-		 upgradeGeometry,
+		 true,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
     if(gdsubdetmap[i] == GeometricDet::OTPhase2EndCap) 
       buildPixel(dets[i],tracker,GeomDetEnumerators::SubDetector::P2OTEC,
-		 upgradeGeometry,
+		 true,
 		 BIG_PIX_PER_ROC_X,
 		 BIG_PIX_PER_ROC_Y); 
   }

@@ -111,7 +111,7 @@ DuplicateRecHits::DuplicateRecHits(const edm::ParameterSet& iConfig):
 
   m_nduplicate = tfserv->make<TH1F>("nduplicate","Number of duplicated clusters per track",10,-0.5,9.5);
   m_nduplmod = tfserv->make<TH1F>("nduplmod","Number of duplicated clusters per module",10,-0.5,9.5);
-  m_nduplmod->SetBit(TH1::kCanRebin);
+  m_nduplmod->SetCanExtend(TH1::kXaxis);
 }
 
 
@@ -151,7 +151,7 @@ DuplicateRecHits::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 	  if(clusters.find(pxrh->cluster().index())!=clusters.end()) {
 	    nduplicate++;
 	    std::stringstream detidstr;
-	    detidstr << ttrh->det()->geographicalId();
+	    detidstr << ttrh->det()->geographicalId().rawId();
 	    m_nduplmod->Fill(detidstr.str().c_str(),1.);
 	    LogDebug("DuplicateHitFinder") << "Track with " << it->recHitsSize() << " RecHits";
 	    LogTrace("DuplicateHitFinder") << "Duplicate found " << ttrh->det()->geographicalId() << " " << pxrh->cluster().index();

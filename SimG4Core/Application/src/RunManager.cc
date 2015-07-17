@@ -9,7 +9,8 @@
 #include "SimG4Core/Application/interface/SimTrackManager.h"
 #include "SimG4Core/Application/interface/G4SimEvent.h"
 #include "SimG4Core/Application/interface/ParametrisedEMPhysics.h"
-
+#include "SimG4Core/Application/interface/G4RegionReporter.h"
+#include "SimG4Core/Application/interface/CMSGDMLWriteStructure.h"
 #include "SimG4Core/Geometry/interface/DDDWorld.h"
 #include "SimG4Core/Geometry/interface/G4LogicalVolumeToDDLogicalPartMap.h"
 #include "SimG4Core/Geometry/interface/SensitiveDetectorCatalog.h"
@@ -33,16 +34,13 @@
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Framework/interface/ESTransientHandle.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
-
-#include "DetectorDescription/Core/interface/DDCompactView.h"
-
 #include "FWCore/ServiceRegistry/interface/Service.h"
+
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "DetectorDescription/Core/interface/DDCompactView.h"
 
 #include "SimDataFormats/Forward/interface/LHCTransportLinkContainer.h"
 
-#include "HepPDT/defs.h"
-#include "HepPDT/TableBuilder.hh"
 #include "HepPDT/ParticleDataTable.hh"
 #include "SimGeneral/HepPDTRecord/interface/PDTRecord.h"
 
@@ -69,8 +67,6 @@
 #include <memory>
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
-
-//#include "SimG4Core/Application/interface/ExceptionHandler.h"
 
 static
 void createWatchers(const edm::ParameterSet& iP,
@@ -107,7 +103,6 @@ void createWatchers(const edm::ParameterSet& iP,
   }
 }
 
-//RunManager::RunManager(edm::ParameterSet const & p, edm::ConsumesCollector && iC) 
 RunManager::RunManager(edm::ParameterSet const & p) 
   :   m_generator(0), m_nonBeam(p.getParameter<bool>("NonBeamEvent")), 
       m_primaryTransformer(0), 
@@ -132,17 +127,13 @@ RunManager::RunManager(edm::ParameterSet const & p)
       m_p(p), m_fieldBuilder(0), m_chordFinderSetter(nullptr),
       m_theLHCTlinkTag(p.getParameter<edm::InputTag>("theLHCTlinkTag"))
 {    
-  //m_HepMC = iC.consumes<edm::HepMCProduct>(p.getParameter<edm::InputTag>("HepMCProduct"));
-
   m_kernel = G4RunManagerKernel::GetRunManagerKernel();
   if (m_kernel==0) m_kernel = new G4RunManagerKernel();
 
-  //m_CustomExceptionHandler = new ExceptionHandler(this) ;
-    
   m_check = p.getUntrackedParameter<bool>("CheckOverlap",false);
   m_WriteFile = p.getUntrackedParameter<std::string>("FileNameGDML","");
   m_FieldFile = p.getUntrackedParameter<std::string>("FileNameField","");
-  if("" != m_FieldFile) { m_FieldFile += ".txt"; } 
+  m_RegionFile = p.getUntrackedParameter<std::string>("FileNameRegions","");
 
   m_userRunAction = 0;
   m_runInterface = 0;
@@ -199,11 +190,6 @@ void RunManager::initG4(const edm::EventSetup & es)
   SensitiveDetectorCatalog catalog_;
   const DDDWorld * world = new DDDWorld(&(*pDD), map_, catalog_, m_check);
   m_registry.dddWorldSignal_(world);
-
-  if("" != m_WriteFile) {
-    G4GDMLParser gdml;
-    gdml.Write(m_WriteFile, world->GetWorldVolume());
-  }
 
   if (m_pUseMagneticField)
     {
@@ -269,15 +255,18 @@ void RunManager::initG4(const edm::EventSetup & es)
   // adding GFlash, Russian Roulette for eletrons and gamma, 
   // step limiters on top of any Physics Lists
   phys->RegisterPhysics(new ParametrisedEMPhysics("EMoptions",m_pPhysics));
-  
-  m_kernel->SetPhysics(phys);
-  m_kernel->InitializePhysics();
 
   m_physicsList->ResetStoredInAscii();
   std::string tableDir = m_PhysicsTablesDir;
   if (m_RestorePhysicsTables) {
     m_physicsList->SetPhysicsTableRetrieved(tableDir);
   } 
+  edm::LogInfo("SimG4CoreApplication") 
+    << "RunManager: start initialisation of PhysicsList";
+  
+  m_kernel->SetPhysics(phys);
+  m_kernel->InitializePhysics();
+
   if (m_kernel->RunInitialization()) { m_managerInitialized = true; }
   else { 
     throw SimG4Exception("G4RunManagerKernel initialization failed!"); 
@@ -299,10 +288,22 @@ void RunManager::initG4(const edm::EventSetup & es)
   
   initializeUserActions();
   
-  for (unsigned it=0; it<m_G4Commands.size(); it++) {
-    edm::LogInfo("SimG4CoreApplication") << "RunManager:: Requests UI: "
-                                         << m_G4Commands[it];
-    G4UImanager::GetUIpointer()->ApplyCommand(m_G4Commands[it]);
+  if(0 < m_G4Commands.size()) {
+    G4cout << "RunManager: Requested UI commands: " << G4endl;
+    for (unsigned it=0; it<m_G4Commands.size(); ++it) {
+      G4cout << "    " << m_G4Commands[it] << G4endl;
+      G4UImanager::GetUIpointer()->ApplyCommand(m_G4Commands[it]);
+    }
+  }
+
+  if("" != m_WriteFile) {
+    G4GDMLParser gdml(new G4GDMLReadStructure(), new CMSGDMLWriteStructure());
+    gdml.Write(m_WriteFile, world->GetWorldVolume(), true);
+  }
+
+  if("" != m_RegionFile) {
+    G4RegionReporter rrep;
+    rrep.ReportRegions(m_RegionFile);
   }
 
   // If the Geant4 particle table is needed, decomment the lines below
@@ -471,12 +472,6 @@ void RunManager::terminateRun()
     delete m_userRunAction; 
     m_userRunAction = 0;
   }
-  /*
-  if (m_currentRun!=0) { 
-    delete m_currentRun; 
-    m_currentRun = 0; 
-  }
-  */
   if (m_kernel!=0 && !m_runTerminated) {
     delete m_currentEvent;
     m_currentEvent = 0;

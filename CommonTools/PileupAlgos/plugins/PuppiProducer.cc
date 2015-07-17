@@ -12,12 +12,15 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/Common/interface/View.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
 #include "DataFormats/GsfTrackReco/interface/GsfTrackFwd.h"
+#include "DataFormats/Common/interface/Association.h"
 //Main File
 #include "fastjet/PseudoJet.hh"
 #include "CommonTools/PileupAlgos/plugins/PuppiProducer.h"
@@ -26,6 +29,7 @@
 
 // ------------------------------------------------------------------------------------------
 PuppiProducer::PuppiProducer(const edm::ParameterSet& iConfig) {
+  fPuppiDiagnostics = iConfig.getParameter<bool>("puppiDiagnostics");
   fUseDZ     = iConfig.getParameter<bool>("UseDeltaZCut");
   fDZCut     = iConfig.getParameter<double>("DeltaZCut");
   fPuppiContainer = std::unique_ptr<PuppiContainer> ( new PuppiContainer(iConfig) );
@@ -36,11 +40,19 @@ PuppiProducer::PuppiProducer(const edm::ParameterSet& iConfig) {
     = consumes<VertexCollection>(iConfig.getParameter<edm::InputTag>("vertexName"));
  
 
-  produces<edm::ValueMap<float> > ("PuppiWeights");
-  produces<edm::ValueMap<LorentzVector> > ("PuppiP4s");
+  produces<edm::ValueMap<float> > ();
+  produces<edm::ValueMap<LorentzVector> > ();
+  produces< edm::ValueMap<reco::CandidatePtr> >(); 
+  
   produces<PFOutputCollection>();
 
-
+  if (fPuppiDiagnostics){
+    produces<double> ("PuppiNAlgos");
+    produces<std::vector<double>> ("PuppiRawAlphas");
+    produces<std::vector<double>> ("PuppiAlphas");
+    produces<std::vector<double>> ("PuppiAlphasMed");
+    produces<std::vector<double>> ("PuppiAlphasRms");
+  }
 }
 // ------------------------------------------------------------------------------------------
 PuppiProducer::~PuppiProducer(){
@@ -66,6 +78,7 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     pReco.eta = itPF->eta();
     pReco.phi = itPF->phi();
     pReco.m   = itPF->mass();
+    pReco.rapidity = itPF->rapidity();
     pReco.charge = itPF->charge(); 
     const reco::Vertex *closestVtx = 0;
     double pDZ    = -9999; 
@@ -73,51 +86,53 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     int    pVtxId = -9999; 
     bool lFirst = true;
     const pat::PackedCandidate *lPack = dynamic_cast<const pat::PackedCandidate*>(&(*itPF));
-    if(lPack == 0 ) { 
+    if(lPack == 0 ) {
       const reco::PFCandidate *pPF = dynamic_cast<const reco::PFCandidate*>(&(*itPF));
       for(reco::VertexCollection::const_iterator iV = pvCol->begin(); iV!=pvCol->end(); ++iV) {
-	if(lFirst) { 
-	  if      ( pPF->trackRef().isNonnull()    ) pDZ = pPF->trackRef()   ->dz(iV->position());
-	  else if ( pPF->gsfTrackRef().isNonnull() ) pDZ = pPF->gsfTrackRef()->dz(iV->position());
-	  if      ( pPF->trackRef().isNonnull()    ) pD0 = pPF->trackRef()   ->d0();
-	  else if ( pPF->gsfTrackRef().isNonnull() ) pD0 = pPF->gsfTrackRef()->d0();
-	  lFirst = false;
-	  if(pDZ > -9999) pVtxId = 0; 
-	}
-	if(iV->trackWeight(pPF->trackRef())>0) {
-	  closestVtx  = &(*iV);
-	  break;
-	}
-	pVtxId++;
+        if(lFirst) {
+          if      ( pPF->trackRef().isNonnull()    ) pDZ = pPF->trackRef()   ->dz(iV->position());
+          else if ( pPF->gsfTrackRef().isNonnull() ) pDZ = pPF->gsfTrackRef()->dz(iV->position());
+          if      ( pPF->trackRef().isNonnull()    ) pD0 = pPF->trackRef()   ->d0();
+          else if ( pPF->gsfTrackRef().isNonnull() ) pD0 = pPF->gsfTrackRef()->d0();
+          lFirst = false;
+          if(pDZ > -9999) pVtxId = 0;
+        }
+        if(iV->trackWeight(pPF->trackRef())>0) {
+            closestVtx  = &(*iV);
+            break;
+          }
+        pVtxId++;
       }
     } else if(lPack->vertexRef().isNonnull() )  {
-      pDZ        = lPack->dz(); 
-      pD0        = lPack->dxy(); 
-      closestVtx = &(*(lPack->vertexRef()));
-      pVtxId = (lPack->fromPV() != (pat::PackedCandidate::PVUsedInFit)); 
-      if( (lPack->fromPV() == pat::PackedCandidate::PVLoose) || 
-	  (lPack->fromPV() == pat::PackedCandidate::PVTight) ) 
-	closestVtx = 0; 
+        pDZ        = lPack->dz();
+        pD0        = lPack->dxy();
+        closestVtx = &(*(lPack->vertexRef()));
+        pVtxId = (lPack->fromPV() != (pat::PackedCandidate::PVUsedInFit));
+        if( (lPack->fromPV() == pat::PackedCandidate::PVLoose) || (lPack->fromPV() == pat::PackedCandidate::PVTight) ){
+            pVtxId = 0;
+        } 
     }
-    pReco.dZ      = pDZ;
-    pReco.d0      = pD0;
+      pReco.dZ      = pDZ;
+      pReco.d0      = pD0;
+      
+      if(closestVtx == 0) pReco.vtxId = -1;
+      if(closestVtx != 0) pReco.vtxId = pVtxId;
+      //if(closestVtx != 0) pReco.vtxChi2 = closestVtx->trackWeight(itPF->trackRef());
+      //Set the id for Puppi Algo: 0 is neutral pfCandidate, id = 1 for particles coming from PV and id = 2 for charged particles from non-leading vertex
+      pReco.id       = 0;
+      
+      if(closestVtx != 0 && pVtxId == 0 && fabs(pReco.charge) > 0) pReco.id = 1;
+      if(closestVtx != 0 && pVtxId >  0 && fabs(pReco.charge) > 0) pReco.id = 2;
+      //Add a dZ cut if wanted (this helps)
+      if(fUseDZ && pDZ > -9999 && closestVtx == 0 && (fabs(pDZ) < fDZCut) && fabs(pReco.charge) > 0) pReco.id = 1;
+      if(fUseDZ && pDZ > -9999 && closestVtx == 0 && (fabs(pDZ) > fDZCut) && fabs(pReco.charge) > 0) pReco.id = 2;
+      
+      //std::cout << "pVtxId = " << pVtxId << ", and charge = " << itPF->charge() << ", and closestVtx = " << closestVtx << ", and id = " << pReco.id << std::endl;
+      //std::cout << "charge = " << itPF->charge() << ", pDZ = " << pDZ << ", pVtxId = " << pVtxId << ", closestVtx = " << closestVtx << ", fromPV() = " << lPack->fromPV() << ", pReco.id = " << pReco.id << std::endl;
 
-    if(closestVtx == 0) pReco.vtxId = -1;
-    if(closestVtx != 0) pReco.vtxId = pVtxId;
-    //if(closestVtx != 0) pReco.vtxChi2 = closestVtx->trackWeight(itPF->trackRef());
-    //Set the id for Puppi Algo: 0 is neutral pfCandidate, id = 1 for particles coming from PV and id = 2 for charged particles from non-leading vertex
-    pReco.id       = 0; 
-
-    if(closestVtx != 0 && pVtxId == 0 && fabs(pReco.charge) > 0) pReco.id = 1;
-    if(closestVtx != 0 && pVtxId >  0 && fabs(pReco.charge) > 0) pReco.id = 2;
-    //Add a dZ cut if wanted (this helps)
-    if(fUseDZ && pDZ > -9999 && closestVtx == 0 && (fabs(pDZ) < fDZCut) && fabs(pReco.charge) > 0) pReco.id = 1; 
-    if(fUseDZ && pDZ > -9999 && closestVtx == 0 && (fabs(pDZ) > fDZCut) && fabs(pReco.charge) > 0) pReco.id = 2; 
-
-    //std::cout << "pVtxId = " << pVtxId << ", and charge = " << itPF->charge() << ", and closestVtx = " << closestVtx << ", and id = " << pReco.id << std::endl;
-
-    fRecoObjCollection.push_back(pReco);
+      fRecoObjCollection.push_back(pReco);
   }
+
   fPuppiContainer->initialize(fRecoObjCollection);
 
   //Compute the weights
@@ -141,15 +156,17 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   fPuppiCandidates.reset( new PFOutputCollection );
   std::auto_ptr<edm::ValueMap<LorentzVector> > p4PupOut(new edm::ValueMap<LorentzVector>());
   LorentzVectorCollection puppiP4s;
+  std::vector<reco::CandidatePtr> values(hPFProduct->size());
+  //std::vector<int> values(hPFProduct->size());
+  
   for ( auto i0 = hPFProduct->begin(),
 	  i0begin = hPFProduct->begin(),
 	  i0end = hPFProduct->end(); i0 != i0end; ++i0 ) {
     //for(unsigned int i0 = 0; i0 < lCandidates.size(); i0++) {
     //reco::PFCandidate pCand;
     auto id = dummySinceTranslateIsNotStatic.translatePdgIdToType(i0->pdgId());
-    reco::PFCandidate pCand( i0->charge(),
-			     i0->p4(),
-			     id );
+    const reco::PFCandidate *pPF = dynamic_cast<const reco::PFCandidate*>(&(*i0));
+    reco::PFCandidate pCand( pPF ? *pPF : reco::PFCandidate(i0->charge(), i0->p4(), id) );
     LorentzVector pVec = i0->p4();
     int val = i0 - i0begin;
 
@@ -169,10 +186,40 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   edm::ValueMap<LorentzVector>::Filler  p4PupFiller(*p4PupOut);
   p4PupFiller.insert(hPFProduct,puppiP4s.begin(), puppiP4s.end() );
   p4PupFiller.fill();
+  
+  iEvent.put(lPupOut);
+  iEvent.put(p4PupOut);
+  edm::OrphanHandle<reco::PFCandidateCollection> oh = iEvent.put( fPuppiCandidates );
+  for(unsigned int ic=0, nc = oh->size(); ic < nc; ++ic) {
+      reco::CandidatePtr pkref( oh, ic );
+      values[ic] = pkref;
+    
+   }  
+  std::auto_ptr<edm::ValueMap<reco::CandidatePtr> > pfMap_p(new edm::ValueMap<reco::CandidatePtr>());
+  edm::ValueMap<reco::CandidatePtr>::Filler filler(*pfMap_p);
+  filler.insert(hPFProduct, values.begin(), values.end());
+  filler.fill();
+  iEvent.put(pfMap_p);
 
-  iEvent.put(lPupOut,"PuppiWeights");
-  iEvent.put(p4PupOut,"PuppiP4s");
-  iEvent.put(fPuppiCandidates);
+
+  //////////////////////////////////////////////
+  if (fPuppiDiagnostics){
+
+    // all the different alphas per particle
+    // THE alpha per particle
+    std::auto_ptr<std::vector<double> > theAlphas(new std::vector<double>(fPuppiContainer->puppiAlphas()));
+    std::auto_ptr<std::vector<double> > theAlphasMed(new std::vector<double>(fPuppiContainer->puppiAlphasMed()));
+    std::auto_ptr<std::vector<double> > theAlphasRms(new std::vector<double>(fPuppiContainer->puppiAlphasRMS()));
+    std::auto_ptr<std::vector<double> > alphas(new std::vector<double>(fPuppiContainer->puppiRawAlphas()));
+    std::auto_ptr<double> nalgos(new double(fPuppiContainer->puppiNAlgos()));
+    
+    iEvent.put(alphas,"PuppiRawAlphas");
+    iEvent.put(nalgos,"PuppiNAlgos");
+    iEvent.put(theAlphas,"PuppiAlphas");
+    iEvent.put(theAlphasMed,"PuppiAlphasMed");
+    iEvent.put(theAlphasRms,"PuppiAlphasRms");
+  }
+  
 }
 
 // ------------------------------------------------------------------------------------------

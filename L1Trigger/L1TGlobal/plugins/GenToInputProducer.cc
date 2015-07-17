@@ -40,6 +40,8 @@
 #include "DataFormats/METReco/interface/GenMET.h"
 
 #include "TMath.h"
+#include "TRandom3.h"
+#include <stdlib.h>
 
 using namespace std;
 using namespace edm;
@@ -77,6 +79,8 @@ namespace l1t {
     //boost::shared_ptr<const CaloParams> m_dbpars; // Database parameters for the trigger, to be updated as needed.
     //boost::shared_ptr<const FirmwareVersion> m_fwv;
     //boost::shared_ptr<FirmwareVersion> m_fwv; //not const during testing.
+
+    TRandom3* gRandom;
 
     // BX parameters
     int bxFirst_;
@@ -163,7 +167,7 @@ namespace l1t {
 
 
     genParticlesToken = consumes <reco::GenParticleCollection> (std::string("genParticles"));
-    genJetsToken      = consumes <reco::GenJetCollection> (std::string("ak5GenJets"));
+    genJetsToken      = consumes <reco::GenJetCollection> (std::string("ak4GenJets"));
     genMetToken       = consumes <reco::GenMETCollection> (std::string("genMetCalo"));   
 
 
@@ -276,9 +280,9 @@ GenToInputProducer::produce(Event& iEvent, const EventSetup& iSetup)
     int pt   = convertPtToHW( mcParticle.pt(), MaxLepPt_, PtStep_ );
     int eta  = convertEtaToHW( mcParticle.eta(), -MaxMuonEta_, MaxMuonEta_, EtaStepMuon_);
     int phi  = convertPhiToHW( mcParticle.phi(), PhiStepMuon_ );
-    int qual = 0;//4;
-    int iso  = 0;//1;
-    int charge = ( mcParticle.charge()>0 ) ? 1 : 0;
+    int qual = gRandom->Integer(16);//4;
+    int iso  = gRandom->Integer(4)%2;//1;
+    int charge = ( mcParticle.charge()<0 ) ? 1 : 0;
     int chargeValid = 1;
     int mip = 1;
     int tag = 1;
@@ -310,7 +314,7 @@ GenToInputProducer::produce(Event& iEvent, const EventSetup& iSetup)
     int eta  = convertEtaToHW( mcParticle.eta(), -MaxCaloEta_, MaxCaloEta_, EtaStepCalo_ );
     int phi  = convertPhiToHW( mcParticle.phi(), PhiStepCalo_ );
     int qual = 1;
-    int iso  = 1;
+    int iso  = gRandom->Integer(4)%2;
 
     // Eta outside of acceptance
     if( eta>=9999 ) continue;
@@ -340,7 +344,7 @@ GenToInputProducer::produce(Event& iEvent, const EventSetup& iSetup)
     int eta  = convertEtaToHW( mcParticle.eta(), -MaxCaloEta_, MaxCaloEta_, EtaStepCalo_);
     int phi  = convertPhiToHW( mcParticle.phi(), PhiStepCalo_ );
     int qual = 1;
-    int iso  = 1;
+    int iso  = gRandom->Integer(4)%2;
 
     // Eta outside of acceptance
     if( eta>=9999 ) continue;
@@ -404,7 +408,7 @@ GenToInputProducer::produce(Event& iEvent, const EventSetup& iSetup)
 	int EGphi  = convertPhiToHW( genJet->phi(), PhiStepCalo_ );
 
 	int EGqual = 1;
-	int EGiso  = 1;
+	int EGiso  = gRandom->Integer(4)%2;
 
 	l1t::EGamma eg(*p4, EGpt, EGeta, EGphi, EGqual, EGiso);
 	egammaVec.push_back(eg);
@@ -417,7 +421,7 @@ GenToInputProducer::produce(Event& iEvent, const EventSetup& iSetup)
 	int Taueta  = convertEtaToHW( genJet->eta(), -MaxCaloEta_, MaxCaloEta_, EtaStepCalo_ );
 	int Tauphi  = convertPhiToHW( genJet->phi(), PhiStepCalo_ );
 	int Tauqual = 1;
-	int Tauiso  = 1;
+	int Tauiso  = gRandom->Integer(4)%2;
 
 	l1t::Tau tau(*p4, Taupt, Taueta, Tauphi, Tauqual, Tauiso);
 	tauVec.push_back(tau);
@@ -632,6 +636,9 @@ void GenToInputProducer::beginRun(Run const&iR, EventSetup const&iE){
   LogDebug("l1t|Global") << "GenToInputProducer::beginRun function called...\n";
 
   counter_ = 0;
+  srand( 0 );
+
+  gRandom = new TRandom3();
 }
 
 // ------------ method called when ending the processing of a run ------------

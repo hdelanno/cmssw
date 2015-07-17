@@ -19,10 +19,10 @@ for testing purposes only.
 #include "FWCore/Utilities/interface/GlobalIdentifier.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/Framework/interface/TriggerNamesService.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/EDMException.h"
-
-
 
 namespace edmtest {
 namespace stream {
@@ -96,7 +96,11 @@ struct Cache {
       m_count = 0;
     }
     
-    void analyze(edm::Event const&, edm::EventSetup const&) {
+    void analyze(edm::Event const&, edm::EventSetup const&) override {
+      if(moduleDescription().processName() != edm::Service<edm::service::TriggerNamesService>()->getProcessName()) {
+        throw cms::Exception("LogicError")
+          << "module description not properly initialized in stream analyzer";
+      }
       ++m_count;
       ++(runCache()->value);
        

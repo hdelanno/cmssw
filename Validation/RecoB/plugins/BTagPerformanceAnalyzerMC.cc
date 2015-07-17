@@ -1,5 +1,6 @@
 #include "Validation/RecoB/plugins/BTagPerformanceAnalyzerMC.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/Framework/interface/makeRefToBaseProdFrom.h"
 #include "DQMOffline/RecoB/interface/TagInfoPlotterFactory.h"
 
 using namespace reco;
@@ -7,7 +8,7 @@ using namespace edm;
 using namespace std;
 using namespace RecoBTag;
 
-typedef std::pair<Jet, reco::JetFlavour> JetWithFlavour;
+typedef std::pair<Jet, reco::JetFlavourInfo> JetWithFlavour;
 
 BTagPerformanceAnalyzerMC::BTagPerformanceAnalyzerMC(const edm::ParameterSet& pSet) :
   jetSelector(
@@ -22,12 +23,11 @@ BTagPerformanceAnalyzerMC::BTagPerformanceAnalyzerMC(const edm::ParameterSet& pS
   ),
   etaRanges(pSet.getParameter< vector<double> >("etaRanges")),
   ptRanges(pSet.getParameter< vector<double> >("ptRanges")),
-  JECsource(pSet.getParameter<std::string>( "JECsource" )),
+  useOldFlavourTool(pSet.getParameter<bool>( "useOldFlavourTool" )),
   doJEC(pSet.getParameter<bool>( "doJEC" )),
   ptHatWeight(pSet.getParameter< bool >("applyPtHatWeight")),
   moduleConfig(pSet.getParameter< vector<edm::ParameterSet> >("tagConfig")),
   flavPlots_(pSet.getParameter< std::string >("flavPlots")),
-  jetCorrector(pSet.getParameter<std::string>("jetCorrection")),
   jetMatcher(pSet.getParameter<edm::ParameterSet>("recJetMatching")),
   doPUid(pSet.getParameter< bool >("doPUid"))
 {
@@ -51,8 +51,11 @@ BTagPerformanceAnalyzerMC::BTagPerformanceAnalyzerMC(const edm::ParameterSet& pS
   
   genToken = mayConsume<GenEventInfoProduct>(edm::InputTag("generator"));
   genJetsMatchedToken = mayConsume<edm::Association<reco::GenJetCollection>>(pSet.getParameter<InputTag>("genJetsMatched"));
-  jetToken = consumes<JetFlavourMatchingCollection>(pSet.getParameter<InputTag>("jetMCSrc"));
+  jetToken = consumes<JetFlavourInfoMatchingCollection>(pSet.getParameter<InputTag>("jetMCSrc"));
+  caloJetToken = mayConsume<JetFlavourMatchingCollection>(pSet.getParameter<InputTag>("caloJetMCSrc"));
   slInfoToken = consumes<SoftLeptonTagInfoCollection>(pSet.getParameter<InputTag>("softLeptonInfo"));
+  jecMCToken = consumes<JetCorrector>(pSet.getParameter<edm::InputTag>( "JECsourceMC" ));
+  jecDataToken = mayConsume<JetCorrector>(pSet.getParameter<edm::InputTag>( "JECsourceData" ));
   for (vector<edm::ParameterSet>::const_iterator iModule = moduleConfig.begin();
        iModule != moduleConfig.end(); ++iModule) {
 
@@ -243,17 +246,37 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
 
   LogDebug("Info") << "Event weight is: " << weight;
     
-  edm::Handle<JetFlavourMatchingCollection> jetMC;
   FlavourMap flavours;
   LeptonMap leptons;
 
-  iEvent.getByToken(jetToken, jetMC); 
-  for (JetFlavourMatchingCollection::const_iterator iter = jetMC->begin();
-       iter != jetMC->end(); ++iter) {
-    unsigned int fl = std::abs(iter->second.getFlavour());
-    flavours.insert(std::make_pair(iter->first, fl));
-    const reco::JetFlavour::Leptons &lep = iter->second.getLeptons();
-    leptons.insert(std::make_pair(iter->first, lep));
+
+  if(!useOldFlavourTool) {
+    edm::Handle<JetFlavourInfoMatchingCollection> jetMC;
+    iEvent.getByToken(jetToken, jetMC); 
+    for (JetFlavourInfoMatchingCollection::const_iterator iter = jetMC->begin(); 
+	 iter != jetMC->end(); ++iter) {
+      unsigned int fl = std::abs(iter->second.getPartonFlavour());
+      flavours.insert(std::make_pair(iter->first, fl));
+      const GenParticleRefVector &lep = iter->second.getLeptons();
+      reco::JetFlavour::Leptons lepCount;
+      for (unsigned int i=0; i<lep.size(); i++){
+	if(abs(lep[i]->pdgId())==11) lepCount.electron++;
+	else if(abs(lep[i]->pdgId())==13) lepCount.muon++;
+	else if(abs(lep[i]->pdgId())==15) lepCount.tau++;
+      }
+      leptons.insert(std::make_pair(iter->first, lepCount));
+    }
+  }
+  else {
+    edm::Handle<JetFlavourMatchingCollection> jetMC;
+    iEvent.getByToken(caloJetToken, jetMC); 
+    for (JetFlavourMatchingCollection::const_iterator iter = jetMC->begin(); 
+	 iter != jetMC->end(); ++iter) {
+      unsigned int fl = std::abs(iter->second.getFlavour());
+      flavours.insert(std::make_pair(iter->first, fl));
+      const reco::JetFlavour::Leptons &lep = iter->second.getLeptons();
+      leptons.insert(std::make_pair(iter->first, lep));
+    }
   }
 
   edm::Handle<reco::SoftLeptonTagInfoCollection> infoHandle;
@@ -269,9 +292,10 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
   if(doJEC) {
     edm::Handle<GenEventInfoProduct> genInfoHandle; //check if data or MC
     iEvent.getByToken(genToken, genInfoHandle);
-    std::string allJECsource = JECsource;
-    if( !genInfoHandle.isValid() ) allJECsource += "Residual";
-    corrector = JetCorrector::getJetCorrector (allJECsource,iSetup);   //Get the jet corrector from the event setup
+    edm::Handle<JetCorrector> corrHandle;
+    if( !genInfoHandle.isValid() ) iEvent.getByToken( jecDataToken, corrHandle);
+    else iEvent.getByToken( jecMCToken, corrHandle);
+    corrector = corrHandle.product();
   }
   //
 
@@ -292,19 +316,18 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
           ((electronPlots && !leptons[tagI->first].electron) ||
            (muonPlots && !leptons[tagI->first].muon) ||
            (tauPlots && !leptons[tagI->first].tau)))
-        continue;
-
+         continue;
       //JEC
       reco::Jet correctedJet = *(tagI->first);
       double jec = 1.0;
       if(doJEC && corrector) {
-        jec = corrector->correction(*(tagI->first),iEvent,iSetup);
+        jec = corrector->correction(*(tagI->first));
       }
 
       JetWithFlavour jetWithFlavour;
-      if (!getJetWithFlavour(tagI->first, flavours, jetWithFlavour, iSetup, genJetsMatched))
+      if (!getJetWithFlavour(iEvent, tagI->first, flavours, jetWithFlavour, corrector, genJetsMatched))
         continue;
-      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getFlavour()), infoHandle, jec))
+      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getPartonFlavour()), infoHandle, jec))
         continue;
 
       for (int iPlotter = 0; iPlotter != plotterSize; ++iPlotter) {
@@ -312,7 +335,7 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
 	      inBin = binJetTagPlotters[iJetLabel][iPlotter]->etaPtBin().inBin(jetWithFlavour.first, jec);
 	      // Fill histograms if in desired pt/rapidity bin.
 	      if (inBin)
-	        binJetTagPlotters[iJetLabel][iPlotter]->analyzeTag(jetWithFlavour.first, jec, tagI->second, std::abs(jetWithFlavour.second.getFlavour()),weight);
+	        binJetTagPlotters[iJetLabel][iPlotter]->analyzeTag(jetWithFlavour.first, jec, tagI->second, std::abs(jetWithFlavour.second.getPartonFlavour()),weight);
       }
     }
     for (int iPlotter = 0; iPlotter != plotterSize; ++iPlotter) {
@@ -339,18 +362,18 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
            (muonPlots && !leptons[tagI->first].muon) ||
            (tauPlots && !leptons[tagI->first].tau)))
         continue;
-
+      
       //JEC
       reco::Jet correctedJet = *(tagI->first);
       double jec = 1.0;
       if(doJEC && corrector) {
-        jec = corrector->correction(*(tagI->first),iEvent,iSetup);
+        jec = corrector->correction(*(tagI->first));
       }
 
       JetWithFlavour jetWithFlavour;
-      if (!getJetWithFlavour(tagI->first, flavours, jetWithFlavour, iSetup, genJetsMatched))
+      if (!getJetWithFlavour(iEvent, tagI->first, flavours, jetWithFlavour, corrector, genJetsMatched))
         continue;
-      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getFlavour()), infoHandle, jec))
+      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getPartonFlavour()), infoHandle, jec))
         continue;
 
       for(int iPlotter = 0; iPlotter != plotterSize; ++iPlotter) {
@@ -360,7 +383,7 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
         if(inBin)
         {
           double discr2 = tagColl2[tagI->first];
-          binTagCorrelationPlotters[iJetLabel][iPlotter]->analyzeTags(tagI->second, discr2, std::abs(jetWithFlavour.second.getFlavour()),weight);
+          binTagCorrelationPlotters[iJetLabel][iPlotter]->analyzeTags(tagI->second, discr2, std::abs(jetWithFlavour.second.getPartonFlavour()),weight);
         }
       }
     }
@@ -431,18 +454,18 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
            (muonPlots && !leptons[jetRef].muon) ||
            (tauPlots && !leptons[jetRef].tau)))
          continue;
-
+      
       //JEC
       reco::Jet correctedJet = *(jetRef);
       double jec = 1.0;
       if(doJEC && corrector) {
-        jec = corrector->correction(*(jetRef),iEvent,iSetup);
+        jec = corrector->correction(*(jetRef));
       }
 
       JetWithFlavour jetWithFlavour;
-      if (!getJetWithFlavour(jetRef, flavours, jetWithFlavour, iSetup, genJetsMatched))
+      if (!getJetWithFlavour(iEvent, jetRef, flavours, jetWithFlavour, corrector, genJetsMatched))
         continue;
-      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getFlavour()), infoHandle, jec))
+      if (!jetSelector(jetWithFlavour.first, std::abs(jetWithFlavour.second.getPartonFlavour()), infoHandle, jec))
         continue;
 
       for (int iPlotter = 0; iPlotter != plotterSize; ++iPlotter) {
@@ -450,7 +473,7 @@ void BTagPerformanceAnalyzerMC::analyze(const edm::Event& iEvent, const edm::Eve
 	      inBin = binTagInfoPlotters[iJetLabel][iPlotter]->etaPtBin().inBin(*jetRef, jec);
 	      // Fill histograms if in desired pt/rapidity bin.
 	      if (inBin)
-	        binTagInfoPlotters[iJetLabel][iPlotter]->analyzeTag(baseTagInfos, jec, std::abs(jetWithFlavour.second.getFlavour()),weight);
+	        binTagInfoPlotters[iJetLabel][iPlotter]->analyzeTag(baseTagInfos, jec, std::abs(jetWithFlavour.second.getPartonFlavour()),weight);
       }
     }
   }
@@ -464,8 +487,9 @@ bool BTagPerformanceAnalyzerMC::getJetWithGenJet(edm::RefToBase<Jet> jetRef, edm
   return false;
 }
 
-bool  BTagPerformanceAnalyzerMC::getJetWithFlavour(edm::RefToBase<Jet> jetRef, const FlavourMap& flavours,
-						   JetWithFlavour & jetWithFlavour, const edm::EventSetup & es, 
+bool  BTagPerformanceAnalyzerMC::getJetWithFlavour(const edm::Event& iEvent,
+						   edm::RefToBase<Jet> jetRef, const FlavourMap& flavours,
+						   JetWithFlavour & jetWithFlavour, const JetCorrector * corrector, 
 						   edm::Handle<edm::Association<reco::GenJetCollection> > genJetsMatched)
 {
   edm::ProductID recProdId = jetRef.id();
@@ -474,17 +498,17 @@ bool  BTagPerformanceAnalyzerMC::getJetWithFlavour(edm::RefToBase<Jet> jetRef, c
     : flavours.begin()->first.id();
 
   if (!eventInitialized) {
-    jetCorrector.setEventSetup(es);
+    jetCorrector.setCorrector(corrector);
     if (recProdId != refProdId) {
       edm::RefToBaseVector<Jet> refJets;
       for(FlavourMap::const_iterator iter = flavours.begin();
           iter != flavours.end(); ++iter)
         refJets.push_back(iter->first);
-      const edm::RefToBaseProd<Jet> recJetsProd(jetRef);
+      const edm::RefToBaseProd<Jet> recJetsProd(edm::makeRefToBaseProdFrom(jetRef, iEvent));
       edm::RefToBaseVector<Jet> recJets;
       for(unsigned int i = 0; i < recJetsProd->size(); i++)
         recJets.push_back(edm::RefToBase<Jet>(recJetsProd, i));
-      jetMatcher.matchCollections(refJets, recJets, es);
+      jetMatcher.matchCollections(refJets, recJets, corrector);
     }
     eventInitialized = true;
   }
@@ -505,11 +529,11 @@ bool  BTagPerformanceAnalyzerMC::getJetWithFlavour(edm::RefToBase<Jet> jetRef, c
     if(!isNotPU) flavour=20;
   }
 
-  jetWithFlavour.second = reco::JetFlavour(jetWithFlavour.first.p4(), math::XYZPoint (0,0,0), flavour);
+  jetWithFlavour.second = reco::JetFlavourInfo(flavour, flavour);
 
-  LogTrace("Info") << "Found jet with flavour "<<jetWithFlavour.second.getFlavour()<<endl;
-  LogTrace("Info") << jetWithFlavour.first.p()<<" , "<< jetWithFlavour.first.pt()<<" - "
-   << jetWithFlavour.second.getLorentzVector().P()<<" , "<< jetWithFlavour.second.getLorentzVector().Pt()<<endl;
+  LogTrace("Info") << "Found jet with flavour "<<jetWithFlavour.second.getPartonFlavour()<<endl;
+  LogTrace("Info") << jetWithFlavour.first.p()<<" , "<< jetWithFlavour.first.pt()<<" - "<<endl;
+    //<< jetWithFlavour.second.getLorentzVector().P()<<" , "<< jetWithFlavour.second.getLorentzVector().Pt()<<endl;
 
   return true;
 }

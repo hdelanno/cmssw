@@ -3,7 +3,6 @@
   \brief    slimmer of PAT Taus 
 */
 
-
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -13,6 +12,8 @@
 #include "DataFormats/Common/interface/RefToPtr.h"
 
 #include "DataFormats/PatCandidates/interface/Photon.h"
+
+#include "PhysicsTools/PatAlgos/interface/ObjectModifier.h"
 
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
@@ -29,6 +30,7 @@ namespace pat {
       virtual ~PATPhotonSlimmer() { }
 
       virtual void produce(edm::Event & iEvent, const edm::EventSetup & iSetup);
+      virtual void beginLuminosityBlock(const edm::LuminosityBlock&, const  edm::EventSetup&) override final;
 
     private:
       edm::EDGetTokenT<edm::View<pat::Photon> > src_;
@@ -41,6 +43,8 @@ namespace pat {
       bool linkToPackedPF_;
       StringCutObjectSelector<pat::Photon> saveNonZSClusterShapes_;
       edm::EDGetTokenT<EcalRecHitCollection> reducedBarrelRecHitCollectionToken_, reducedEndcapRecHitCollectionToken_;
+      bool modifyPhoton_;
+      std::unique_ptr<pat::ObjectModifier<pat::Photon> > photonModifier_;
   };
 
 } // namespace
@@ -55,8 +59,18 @@ pat::PATPhotonSlimmer::PATPhotonSlimmer(const edm::ParameterSet & iConfig) :
     linkToPackedPF_(iConfig.getParameter<bool>("linkToPackedPFCandidates")),
     saveNonZSClusterShapes_(iConfig.getParameter<std::string>("saveNonZSClusterShapes")),
     reducedBarrelRecHitCollectionToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("reducedBarrelRecHitCollection"))),
-    reducedEndcapRecHitCollectionToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("reducedEndcapRecHitCollection")))
+    reducedEndcapRecHitCollectionToken_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("reducedEndcapRecHitCollection"))),
+    modifyPhoton_(iConfig.getParameter<bool>("modifyPhotons"))
 {
+    edm::ConsumesCollector sumes(consumesCollector());
+    if( modifyPhoton_ ) {
+      const edm::ParameterSet& mod_config = iConfig.getParameter<edm::ParameterSet>("modifierConfig");
+      photonModifier_.reset(new pat::ObjectModifier<pat::Photon>(mod_config) );
+      photonModifier_->setConsumes(sumes);
+    } else {
+      photonModifier_.reset(nullptr);
+    }
+    
     produces<std::vector<pat::Photon> >();
     if (linkToPackedPF_) {
         reco2pf_ = consumes<edm::ValueMap<std::vector<reco::PFCandidateRef>>>(iConfig.getParameter<edm::InputTag>("recoToPFMap"));
@@ -65,6 +79,11 @@ pat::PATPhotonSlimmer::PATPhotonSlimmer(const edm::ParameterSet & iConfig) :
     }
     mayConsume<EcalRecHitCollection>(edm::InputTag("reducedEcalRecHitsEB"));
     mayConsume<EcalRecHitCollection>(edm::InputTag("reducedEcalRecHitsEE"));
+}
+
+void 
+pat::PATPhotonSlimmer::beginLuminosityBlock(const edm::LuminosityBlock&, const  edm::EventSetup& iSetup) {
+  if( modifyPhoton_ ) photonModifier_->setEventContent(iSetup);
 }
 
 void 
@@ -88,9 +107,14 @@ pat::PATPhotonSlimmer::produce(edm::Event & iEvent, const edm::EventSetup & iSet
     auto_ptr<vector<pat::Photon> >  out(new vector<pat::Photon>());
     out->reserve(src->size());
 
+    if( modifyPhoton_ ) { photonModifier_->setEvent(iEvent); }
+
+    std::vector<unsigned int> keys;
     for (View<pat::Photon>::const_iterator it = src->begin(), ed = src->end(); it != ed; ++it) {
         out->push_back(*it);
         pat::Photon & photon = out->back();
+
+        if( modifyPhoton_ ) { photonModifier_->modify(photon); }
 
         if (dropSuperClusters_(photon)) { photon.superCluster_.clear(); photon.embeddedSuperCluster_ = false; }
 	if (dropBasicClusters_(photon)) { photon.basicClusters_.clear(); }
@@ -99,19 +123,19 @@ pat::PATPhotonSlimmer::produce(edm::Event & iEvent, const edm::EventSetup & iSet
         if (dropRecHits_(photon)) { photon.recHits_ = EcalRecHitCollection(); photon.embeddedRecHits_ = false; }
 
         if (linkToPackedPF_) {
-            photon.setPackedPFCandidateCollection(edm::RefProd<pat::PackedCandidateCollection>(pc));
             //std::cout << " PAT  photon in  " << src.id() << " comes from " << photon.refToOrig_.id() << ", " << photon.refToOrig_.key() << std::endl;
-            edm::RefVector<pat::PackedCandidateCollection> origs;
-            for (const reco::PFCandidateRef & pf : (*reco2pf)[photon.refToOrig_]) {
-                if (pf2pc->contains(pf.id())) {
-                    origs.push_back((*pf2pc)[pf]);
-                } //else std::cerr << " Photon linked to a PFCand in " << pf.id() << " while we expect them in " << pf2pc->ids().front().first << "\n";
+            keys.clear();
+            for(auto const& pf: (*reco2pf)[photon.refToOrig_]) {
+              if( pf2pc->contains(pf.id()) ) {
+                keys.push_back( (*pf2pc)[pf].key());
+              }
             }
-            //std::cout << "Photon with pt " << photon.pt() << " associated to " << origs.size() << " PF Candidates\n";
-            photon.setAssociatedPackedPFCandidates(origs);
+            photon.setAssociatedPackedPFCandidates(edm::RefProd<pat::PackedCandidateCollection>(pc),
+                                                   keys.begin(), keys.end());
+            //std::cout << "Photon with pt " << photon.pt() << " associated to " << photon.associatedPackedFCandidateIndices_.size() << " PF Candidates\n";
             //if there's just one PF Cand then it's me, otherwise I have no univoque parent so my ref will be null 
-            if (origs.size() == 1) {
-                photon.refToOrig_ = refToPtr(origs[0]);
+            if (keys.size() == 1) {
+                photon.refToOrig_ = photon.sourceCandidatePtr(0);
             } else {
                 photon.refToOrig_ = reco::CandidatePtr(pc.id());
             }

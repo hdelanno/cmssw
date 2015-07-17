@@ -119,6 +119,7 @@ struct RunManagerMTWorker::TLSData {
   std::vector<std::shared_ptr<SimProducer> > producers;
   std::unique_ptr<sim::FieldBuilder> fieldBuilder;
   std::unique_ptr<G4Run> currentRun;
+  std::unique_ptr<G4Event> currentEvent;
   edm::RunNumber_t currentRunNumber = 0;
   bool threadInitialized = false;
   bool runTerminated = false;
@@ -257,6 +258,10 @@ void RunManagerMTWorker::initializeThread(const RunManagerMT& runManagerMaster, 
 
   // Set the physics list for the worker, share from master
   PhysicsList *physicsList = runManagerMaster.physicsListForWorker();
+
+  edm::LogInfo("SimG4CoreApplication") 
+    << "RunManagerMTWorker: start initialisation of PhysicsList for a thread";
+
   physicsList->InitializeWorker();
   kernel->SetPhysics(physicsList);
   kernel->InitializePhysics();
@@ -270,17 +275,17 @@ void RunManagerMTWorker::initializeThread(const RunManagerMT& runManagerMaster, 
   m_tls->registry.beginOfJobSignal_(&aBeginOfJob);
 
   initializeUserActions();
-
+  /*
   for(const std::string& command: runManagerMaster.G4Commands()) {
     edm::LogInfo("SimG4CoreApplication") << "RunManagerMTWorker:: Requests UI: "
                                          << command;
     G4UImanager::GetUIpointer()->ApplyCommand(command);
   }
+  */
 }
 
 void RunManagerMTWorker::initializeUserActions() {
   m_tls->runInterface.reset(new SimRunInterface(this, false));
-
   m_tls->userRunAction.reset(new RunAction(m_pRunAction, m_tls->runInterface.get()));
   m_tls->userRunAction->SetMaster(false);
   Connect(m_tls->userRunAction.get());
@@ -364,7 +369,7 @@ void RunManagerMTWorker::terminateRun() {
 
   G4RunManagerKernel *kernel = G4WorkerRunManagerKernel::GetRunManagerKernel();
   if(!kernel && !m_tls->runTerminated) {
-    m_currentEvent.reset();
+    m_tls->currentEvent.reset();
     m_simEvent.reset();
     kernel->RunTermination();
     m_tls->runTerminated = true;
@@ -397,7 +402,7 @@ void RunManagerMTWorker::produce(const edm::Event& inpevt, const edm::EventSetup
   m_tls->runInterface->setRunManagerMTWorker(this); // For UserActions
 
 
-  m_currentEvent.reset(generateEvent(inpevt));
+  m_tls->currentEvent.reset(generateEvent(inpevt));
 
   m_simEvent.reset(new G4SimEvent());
   m_simEvent->hepEvent(m_generator.genEvent());
@@ -410,7 +415,7 @@ void RunManagerMTWorker::produce(const edm::Event& inpevt, const edm::EventSetup
 			       genVertex->z()/centimeter,
 			       genVertex->t()/second));
   }
-  if (m_currentEvent->GetNumberOfPrimaryVertex()==0) {
+  if (m_tls->currentEvent->GetNumberOfPrimaryVertex()==0) {
     edm::LogError("SimG4CoreApplication") 
       << " RunManagerMT::produce event " << inpevt.id().event()
       << " with no G4PrimaryVertices \n  Aborting Run" ;
@@ -423,7 +428,7 @@ void RunManagerMTWorker::produce(const edm::Event& inpevt, const edm::EventSetup
       ss << "No G4WorkerRunManagerKernel yet for thread index" << getThreadIndex() << ", id " << std::hex << std::this_thread::get_id();
       throw SimG4Exception(ss.str());
     }
-    kernel->GetEventManager()->ProcessOneEvent(m_currentEvent.get());
+    kernel->GetEventManager()->ProcessOneEvent(m_tls->currentEvent.get());
   }
     
   edm::LogInfo("SimG4CoreApplication")
@@ -448,7 +453,7 @@ void RunManagerMTWorker::abortEvent() {
     static_cast<TrackingAction *>(kernel->GetEventManager()->GetUserTrackingAction());
   uta->PostUserTrackingAction(t) ;
 
-  m_currentEvent->SetEventAborted();
+  m_tls->currentEvent->SetEventAborted();
 
   // do NOT call this method for now
   // because it'll set abortRequested=true (withing G4EventManager)
@@ -475,7 +480,7 @@ void RunManagerMTWorker::abortRun(bool softAbort) {
 }
 
 G4Event * RunManagerMTWorker::generateEvent(const edm::Event& inpevt) {
-  m_currentEvent.reset();
+  m_tls->currentEvent.reset();
   m_simEvent.reset();
 
   // 64 bits event ID in CMSSW converted into Geant4 event ID

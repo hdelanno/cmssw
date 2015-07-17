@@ -18,10 +18,6 @@
 // Basic inclusion
 #include "RecoHI/HiTracking/interface/HICaloCompatibleTrackSelector.h"
 
-#include "DataFormats/RecoCandidate/interface/TrackAssociation.h"
-#include "SimTracker/Records/interface/TrackAssociatorRecord.h"
-#include "SimTracker/TrackAssociation/interface/TrackAssociatorByHits.h"
-
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 
@@ -148,10 +144,11 @@ void HICaloCompatibleTrackSelector::produce( edm::Event& evt, const edm::EventSe
       TrackExtra & tx = selTrackExtras_->back();
       tx.setResiduals(trk.residuals());
       // TrackingRecHits
+      auto const firstHitIndex = selHits_->size();
       for( trackingRecHit_iterator hit = trk.recHitsBegin(); hit != trk.recHitsEnd(); ++ hit ) {
 	selHits_->push_back( (*hit)->clone() );
-	tx.add( TrackingRecHitRef( rHits_, selHits_->size() - 1) );
       }
+      tx.setHits( rHits_, firstHitIndex, selHits_->size() - firstHitIndex );
     }
     if (copyTrajectories_) {
       trackRefs_[current] = TrackRef(rTracks_, selTracks_->size() - 1);

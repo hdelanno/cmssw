@@ -2,9 +2,10 @@
 #define RecoBTag_SoftLepton_ElectronTagger_h
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "CommonTools/Utils/interface/TMVAEvaluator.h"
 #include "RecoBTau/JetTagComputer/interface/JetTagComputer.h"
 #include "RecoBTag/SoftLepton/interface/LeptonSelector.h"
-#include "RecoBTag/SoftLepton/interface/ElectronTaggerMLP.h"
+#include <mutex>
 
 /** \class ElectronTagger
  *
@@ -17,22 +18,13 @@ class ElectronTagger : public JetTagComputer {
 public:
 
   /// explicit ctor 
-  explicit ElectronTagger(const edm::ParameterSet & configuration) : 
-    m_selector(configuration)
-  { 
-    uses("seTagInfos"); 
-  }
-  
-  /// dtor
-  virtual ~ElectronTagger() { }
-
-  /// b-tag a jet based on track-to-jet parameters in the extened info collection
-  virtual float discriminator(const TagInfoHelper & tagInfo) const;
+ ElectronTagger(const edm::ParameterSet & );
+  virtual float discriminator(const TagInfoHelper & tagInfo) const override;
 
 private:
-
   btag::LeptonSelector m_selector;
-
+  mutable std::mutex m_mutex;
+  [[cms::thread_guard("m_mutex")]] std::unique_ptr<TMVAEvaluator> mvaID;
 };
 
-#endif // RecoBTag_SoftLepton_ElectronTagger_h
+#endif

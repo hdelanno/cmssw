@@ -62,7 +62,6 @@ class BaseHandler {
     public:
         BaseHandler();
         ~BaseHandler(){
-            delete m_expression;
         }
         BaseHandler(const edm::ParameterSet& iConfig,  triggerExpression::Data & eventCache):
               m_expression(triggerExpression::parse( iConfig.getParameter<std::string>("triggerSelection")))
@@ -92,7 +91,7 @@ class BaseHandler {
         virtual void book(DQMStore::IBooker & booker) = 0;
         virtual void getAndStoreTokens(edm::ConsumesCollector && iC) = 0;
 
-        triggerExpression::Evaluator * m_expression;
+        std::unique_ptr<triggerExpression::Evaluator>  m_expression;
         triggerExpression::Data * m_eventCache;
         std::string m_dirname;
         std::map<std::string,  MonitorElement*> m_histos;
@@ -159,11 +158,11 @@ class HandlerTemplate: public BaseHandler {
                 todo[SingleObjectPlotter]=&m_singleObjectDrawables;
                 for (size_t ti =0; ti<todo.size();++ti){
                     for (size_t i = 0; i < todo[ti]->size(); ++i){
-                        std::string histoName = m_dqmhistolabel + "_" + todo[ti]->at(i).getParameter<std::string>("name");
-                        std::string expression = todo[ti]->at(i).getParameter<std::string>("expression");
-                        int bins =  todo[ti]->at(i).getParameter<int>("bins");
-                        double rangeLow  =  todo[ti]->at(i).getParameter<double>("min");
-                        double rangeHigh =  todo[ti]->at(i).getParameter<double>("max");
+                        std::string histoName = m_dqmhistolabel + "_" + todo[ti]->at(i).template getParameter<std::string>("name");
+                        std::string expression =   todo[ti]->at(i).template getParameter<std::string>("expression");
+                        int bins =    todo[ti]->at(i).template getParameter<int>("bins");
+                        double rangeLow  =  todo[ti]->at(i).template getParameter<double>("min");
+                        double rangeHigh =  todo[ti]->at(i).template getParameter<double>("max");
                         m_histos[histoName] =  booker.book1D(histoName, histoName, bins, rangeLow, rangeHigh);
                         m_plotterType[histoName] = ti;
                         if (ti == CombinedObjectPlotter){
@@ -280,7 +279,7 @@ class HandlerTemplate: public BaseHandler {
 
             // LogWarning or LogError?
             if (numPathMatches != 1) {
-                  edm::LogError("FSQDiJetAve") << "Problem: found " << numPathMatches
+                  edm::LogInfo("FSQDiJetAve") << "Problem: found " << numPathMatches
                     << " paths matching " << m_pathPartialName << std::endl;
                   return ret;   
             }
@@ -318,7 +317,6 @@ class HandlerTemplate: public BaseHandler {
                     edm::LogInfo("FSQDiJetAve") << "One of requested paths not found, skipping event";
                     return;
             }
-
             if (m_eventCache->configurationUpdated()) {
                 m_expression->init(*m_eventCache);
             }
@@ -738,8 +736,7 @@ typedef HandlerTemplate<reco::GenParticle, int > RecoGenParticleCounter;
 //
 //################################################################################################
 FSQDiJetAve::FSQDiJetAve(const edm::ParameterSet& iConfig):
-  m_eventCache(iConfig.getParameterSet("triggerConfiguration") , consumesCollector()),
-  m_isSetup(false)
+  m_eventCache(iConfig.getParameterSet("triggerConfiguration") , consumesCollector())
 {
   m_useGenWeight = iConfig.getParameter<bool>("useGenWeight");
   if (m_useGenWeight) {
@@ -827,10 +824,9 @@ FSQDiJetAve::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
   
   //---------- triggerResults ----------
-  if(&m_triggerResults) {  
+  if(m_triggerResults.isValid()) {
     m_triggerNames = iEvent.triggerNames(*m_triggerResults);
-  } 
-  else {
+  } else {
     edm::LogError("FSQDiJetAve") << "TriggerResults not found";
     return;
   } 

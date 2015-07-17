@@ -216,9 +216,9 @@ EDAnalyzerAdaptorBase::doStreamEndLuminosityBlock(StreamID id,
 }
 
 void
-EDAnalyzerAdaptorBase::doRespondToOpenInputFile(FileBlock const& fb){}
+EDAnalyzerAdaptorBase::doRespondToOpenInputFile(FileBlock const&){}
 void
-EDAnalyzerAdaptorBase::doRespondToCloseInputFile(FileBlock const& fb){}
+EDAnalyzerAdaptorBase::doRespondToCloseInputFile(FileBlock const&){}
 void
 EDAnalyzerAdaptorBase::doPreForkReleaseResources()
 {
@@ -232,4 +232,9 @@ EDAnalyzerAdaptorBase::doPostForkReacquireResources(unsigned int iChildIndex, un
   for(auto mod: m_streamModules) {
     mod->postForkReacquireResources(iChildIndex,iNumberOfChildren);
   }
+}
+
+void
+EDAnalyzerAdaptorBase::setModuleDescriptionPtr(EDAnalyzerBase* m) {
+  m->setModuleDescriptionPtr(&moduleDescription_);
 }

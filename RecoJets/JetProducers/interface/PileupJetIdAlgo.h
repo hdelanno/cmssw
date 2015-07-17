@@ -11,6 +11,8 @@
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "TMVA/Tools.h"
@@ -34,7 +36,7 @@ public:
 	PileupJetIdentifier computeIdVariables(const reco::Jet * jet, 
 					       float jec, const reco::Vertex *, const reco::VertexCollection &,
 					       bool calculateMva=false);
-	
+
 	void set(const PileupJetIdentifier &);
 	PileupJetIdentifier computeMva();
 	const std::string method() const { return tmvaMethod_; }

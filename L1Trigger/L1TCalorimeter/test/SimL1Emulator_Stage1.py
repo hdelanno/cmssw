@@ -44,13 +44,15 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag.connect = cms.string('frontier://FrontierProd/CMS_COND_31X_GLOBALTAG')
 process.GlobalTag.globaltag = cms.string('POSTLS162_V2::All')
 
+process.load('L1Trigger.L1TCalorimeter.caloConfigStage1PP_cfi')
+
 process.load('L1Trigger.L1TCalorimeter.L1TCaloStage1_PPFromRaw_cff')
 
 # GT
 from L1Trigger.Configuration.SimL1Emulator_cff import simGtDigis
 process.simGtDigis = simGtDigis.clone()
 process.simGtDigis.GmtInputTag = 'simGmtDigis'
-process.simGtDigis.GctInputTag = 'caloStage1LegacyFormatDigis'
+process.simGtDigis.GctInputTag = 'simCaloStage1LegacyFormatDigis'
 process.simGtDigis.TechnicalTriggersInputTags = cms.VInputTag( )
 
 

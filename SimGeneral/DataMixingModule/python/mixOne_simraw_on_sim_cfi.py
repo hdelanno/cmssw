@@ -7,6 +7,7 @@
 import FWCore.ParameterSet.Config as cms
 from SimCalorimetry.HcalSimProducers.hcalUnsuppressedDigis_cfi import hcalSimBlock
 from SimGeneral.MixingModule.SiStripSimParameters_cfi import SiStripSimBlock
+from SimGeneral.MixingModule.SiPixelSimParameters_cfi import SiPixelSimBlock
 from SimCalorimetry.EcalSimProducers.ecalDigiParameters_cff import *
 from SimCalorimetry.EcalSimProducers.apdSimParameters_cff import *
 from SimCalorimetry.EcalSimProducers.ecalSimParameterMap_cff import *
@@ -32,7 +33,7 @@ ecalPreshowerDigis = EventFilter.ESRawToDigi.esRawToDigi_cfi.esRawToDigi.clone()
 
 hcalDigis = EventFilter.HcalRawToDigi.HcalRawToDigi_cfi.hcalDigis.clone()
 
-#muonCSCDigis = EventFilter.CSCRawToDigi.cscUnpacker_cfi.muonCSCDigis.clone()
+muonCSCDigis = EventFilter.CSCRawToDigi.cscUnpacker_cfi.muonCSCDigis.clone()
 
 muonDTDigis = EventFilter.DTRawToDigi.dtunpacker_cfi.muonDTDigis.clone()
 
@@ -47,7 +48,7 @@ siPixelDigis.InputLabel = 'rawDataCollector'
 ecalDigis.InputLabel = 'rawDataCollector'
 ecalPreshowerDigis.sourceTag = 'rawDataCollector'
 hcalDigis.InputLabel = 'rawDataCollector'
-#muonCSCDigis.InputObjects = 'rawDataCollector'
+muonCSCDigis.InputObjects = 'rawDataCollector'
 muonDTDigis.inputLabel = 'rawDataCollector'
 #muonRPCDigis.InputLabel = 'rawDataCollector'
 #castorDigis.InputLabel = 'rawDataCollector'
@@ -58,6 +59,7 @@ hcalSimBlock.HcalPreMixStage2 = cms.bool(True)
 mixData = cms.EDProducer("DataMixingModule",
           hcalSimBlock,
           SiStripSimBlock,
+          SiPixelSimBlock,
           ecal_digi_parameters,
           apd_sim_parameters,
           ecal_electronics_sim,
@@ -65,14 +67,14 @@ mixData = cms.EDProducer("DataMixingModule",
           ecal_sim_parameter_map,
           ecal_notCont_sim,
           es_electronics_sim,
-    input = cms.SecSource("PoolSource",
+    input = cms.SecSource("EmbeddedRootSource",
         producers = cms.VPSet(cms.convertToVPSet(
                                              ecalDigis = ecalDigis,
                                              ecalPreshowerDigis = ecalPreshowerDigis,
                                              hcalDigis = hcalDigis,
                                              muonDTDigis = muonDTDigis,
                                              #muonRPCDigis = muonRPCDigis,
-                                             #muonCSCDigis = muonCSCDigis,
+                                             muonCSCDigis = muonCSCDigis,
                                              siStripDigis = siStripDigis,
                                              siPixelDigis = siPixelDigis,
                              )),
@@ -94,7 +96,7 @@ mixData = cms.EDProducer("DataMixingModule",
     #
     mixProdStep1 = cms.bool(False),
     mixProdStep2 = cms.bool(False),
-    IsThisFastSim = cms.string('NO'),  # kludge for fast simulation flag...
+    TrackerMergeType = cms.string('Digis'),  # kludge for fast simulation flag...
     # Merge Pileup Info?
     MergePileupInfo = cms.bool(True),                         
     # Use digis?               
@@ -105,8 +107,13 @@ mixData = cms.EDProducer("DataMixingModule",
     #
     # Input Specifications:
     #
-
+    #
+    # Tracking particles
+    #
+    TrackingParticleLabelSig = cms.InputTag("mix","MergedTrackTruth"),
+    #                     
     PileupInfoInputTag = cms.InputTag("addPileupInfo"),
+    BunchSpacingInputTag = cms.InputTag("addPileupInfo","bunchSpacing"),
     CFPlaybackInputTag = cms.InputTag("mix"),
     #
     SistripLabelSig = cms.InputTag("simSiStripDigis","ZeroSuppressed"),
@@ -150,6 +157,8 @@ mixData = cms.EDProducer("DataMixingModule",
     HOdigiCollectionSig    = cms.InputTag("simHcalUnsuppressedDigis"),
     HFdigiCollectionSig    = cms.InputTag("simHcalUnsuppressedDigis"),
     ZDCdigiCollectionSig   = cms.InputTag("simHcalUnsuppressedDigis"),
+
+    TrackingParticlePileInputTag = cms.InputTag("mix","MergedTrackTruth"),
 
     #
     EBPileInputTag = cms.InputTag("ecalDigis","ebDigis","@MIXING"),
@@ -199,6 +208,7 @@ mixData = cms.EDProducer("DataMixingModule",
     CSCStripDigiCollectionDM = cms.string('MuonCSCStripDigisDM'),
     CSCComparatorDigiCollectionDM = cms.string('MuonCSCComparatorDigisDM'),
     RPCDigiCollectionDM = cms.string('muonRPCDigisDM'),
+    TrackingParticleCollectionDM = cms.string('MergedTrackTruth'),
     #
     #  Calorimeter Digis
     #               

@@ -21,7 +21,7 @@ namespace cond {
 
   // to be removed after the transition to new DB
   typedef enum { UNKNOWN_DB=0, COND_DB, ORA_DB } BackendType;
-  static constexpr BackendType DEFAULT_DB = ORA_DB;
+  static constexpr BackendType DEFAULT_DB = COND_DB;
   // for the validation of migrated data
   typedef enum { ERROR=0, MIGRATED, VALIDATED } MigrationStatus;
   static const std::vector<std::string> validationStatusText = { "Error",
@@ -96,6 +96,14 @@ namespace cond {
     std::string payloadToken;
     std::string exectime;
     std::string execmessage;
+  };
+
+  struct GTMetadata_t {
+    Time_t validity;
+    std::string description;
+    std::string release;
+    boost::posix_time::ptime insertionTime;
+    boost::posix_time::ptime snapshotTime;
   };
 
   class GTEntry_t {

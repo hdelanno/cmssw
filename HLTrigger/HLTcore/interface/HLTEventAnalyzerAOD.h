@@ -12,9 +12,9 @@
  */
 
 #include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/Framework/interface/stream/EDAnalyzer.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
+#include "HLTrigger/HLTcore/interface/HLTPrescaleProvider.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 namespace edm {
@@ -24,7 +24,7 @@ namespace edm {
 //
 // class declaration
 //
-class HLTEventAnalyzerAOD : public edm::one::EDAnalyzer<edm::one::WatchRuns> {
+class HLTEventAnalyzerAOD : public edm::stream::EDAnalyzer< > {
   
  public:
   explicit HLTEventAnalyzerAOD(const edm::ParameterSet&);
@@ -49,7 +49,7 @@ class HLTEventAnalyzerAOD : public edm::one::EDAnalyzer<edm::one::WatchRuns> {
   /// additional class data memebers
   edm::Handle<edm::TriggerResults>   triggerResultsHandle_;
   edm::Handle<trigger::TriggerEvent> triggerEventHandle_;
-  HLTConfigProvider hltConfig_;
+  HLTPrescaleProvider hltPrescaleProvider_;
 
 };
 #endif

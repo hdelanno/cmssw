@@ -1,14 +1,17 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeomBuilderFromGeometricDet.h"
+#include "CondFormats/GeometryObjects/interface/PTrackerParameters.h"
+#include "Geometry/Records/interface/PTrackerParametersRcd.h"
 
 #include "Alignment/CommonAlignment/interface/SurveyDet.h"
 #include "Alignment/TrackerAlignment/interface/AlignableTracker.h"
 
 #include "CondFormats/Alignment/interface/Alignments.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerAlignmentRcd.h"
-#include "CondFormats/Alignment/interface/AlignmentErrors.h"
-#include "CondFormats/AlignmentRecord/interface/TrackerAlignmentErrorRcd.h"
+#include "CondFormats/Alignment/interface/AlignmentErrorsExtended.h"
+#include "CondFormats/AlignmentRecord/interface/TrackerAlignmentErrorExtendedRcd.h"
 
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -33,8 +36,7 @@
 // made some variables constant, removed obviously dead code and comments
 
 TrackerSystematicMisalignments::TrackerSystematicMisalignments(const edm::ParameterSet& cfg)
-  : theAlignableTracker(0),
-    theParameterSet(cfg)
+  : theAlignableTracker(0)
 {
 	// use existing geometry
 	m_fromDBGeom = cfg.getUntrackedParameter< bool > ("fromDBGeom");
@@ -112,21 +114,23 @@ void TrackerSystematicMisalignments::analyze(const edm::Event& event, const edm:
 	
 	//Retrieve tracker topology from geometry
 	edm::ESHandle<TrackerTopology> tTopoHandle;
-	setup.get<IdealGeometryRecord>().get(tTopoHandle);
+	setup.get<TrackerTopologyRcd>().get(tTopoHandle);
 	const TrackerTopology* const tTopo = tTopoHandle.product();
 	
 	edm::ESHandle<GeometricDet>  geom;
 	setup.get<IdealGeometryRecord>().get(geom);	 
-	TrackerGeometry* tracker = TrackerGeomBuilderFromGeometricDet().build(&*geom, theParameterSet);
+	edm::ESHandle<PTrackerParameters> ptp;
+	setup.get<PTrackerParametersRcd>().get( ptp );
+	TrackerGeometry* tracker = TrackerGeomBuilderFromGeometricDet().build(&*geom, *ptp );
 	
 	//take geometry from DB or randomly generate geometry
 	if (m_fromDBGeom){
 		//build the tracker
 		edm::ESHandle<Alignments> alignments;
-		edm::ESHandle<AlignmentErrors> alignmentErrors;
+		edm::ESHandle<AlignmentErrorsExtended> alignmentErrors;
 		
 		setup.get<TrackerAlignmentRcd>().get(alignments);
-		setup.get<TrackerAlignmentErrorRcd>().get(alignmentErrors);
+		setup.get<TrackerAlignmentErrorExtendedRcd>().get(alignmentErrors);
 		
 		//apply the latest alignments
 		GeometryAligner aligner;
@@ -140,19 +144,19 @@ void TrackerSystematicMisalignments::analyze(const edm::Event& event, const edm:
 	
 	// -------------- writing out to alignment record --------------
 	Alignments* myAlignments = theAlignableTracker->alignments() ;
-	AlignmentErrors* myAlignmentErrors = theAlignableTracker->alignmentErrors() ;
+	AlignmentErrorsExtended* myAlignmentErrorsExtended = theAlignableTracker->alignmentErrors() ;
 	
 	// Store alignment[Error]s to DB
 	edm::Service<cond::service::PoolDBOutputService> poolDbService;
 	std::string theAlignRecordName = "TrackerAlignmentRcd";
-	std::string theErrorRecordName = "TrackerAlignmentErrorRcd";
+	std::string theErrorRecordName = "TrackerAlignmentErrorExtendedRcd";
 	
 	// Call service
 	if( !poolDbService.isAvailable() ) // Die if not available
 		throw cms::Exception("NotAvailable") << "PoolDBOutputService not available";
 	
 	poolDbService->writeOne<Alignments>(&(*myAlignments), poolDbService->beginOfTime(), theAlignRecordName);
-	poolDbService->writeOne<AlignmentErrors>(&(*myAlignmentErrors), poolDbService->beginOfTime(), theErrorRecordName);
+	poolDbService->writeOne<AlignmentErrorsExtended>(&(*myAlignmentErrorsExtended), poolDbService->beginOfTime(), theErrorRecordName);
 }
 
 void TrackerSystematicMisalignments::applySystematicMisalignment(Alignable* ali)

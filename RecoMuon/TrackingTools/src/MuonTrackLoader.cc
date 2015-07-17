@@ -93,6 +93,8 @@ MuonTrackLoader::MuonTrackLoader(ParameterSet &parameterSet, edm::ConsumesCollec
   theSmoothingStep = parameterSet.getParameter<bool>("DoSmoothing");
   if(theSmoothingStep)
     theSmootherName = parameterSet.getParameter<string>("Smoother");  
+
+  theTrackerRecHitBuilderName = parameterSet.getParameter<std::string>("TTRHBuilder");
   
   // update at vertex
   theUpdatingAtVtx = parameterSet.getParameter<bool>("VertexConstraint");
@@ -147,7 +149,7 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
   if(theUpdatingAtVtx)  trackUpdatedCollectionRefProd = event.getRefBeforePut<reco::TrackCollection>(instance+"UpdatedAtVtx");
   
   // Association map between updated and non updated at vtx tracks
-  auto_ptr<reco:: TrackToTrackMap> trackToTrackmap(new reco::TrackToTrackMap);
+  auto_ptr<reco:: TrackToTrackMap> trackToTrackmap(new reco::TrackToTrackMap(trackCollectionRefProd, trackUpdatedCollectionRefProd));
   
   // the track extra collection, it will be loaded in the event  
   auto_ptr<reco::TrackExtraCollection> trackExtraCollection(new reco::TrackExtraCollection() );
@@ -162,15 +164,15 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
   // Collection of Trajectory
   auto_ptr<vector<Trajectory> > trajectoryCollection(new vector<Trajectory>);
   
-  // Association map between track and trajectory
-  std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection() );
-  
   // don't waste any time...
   if ( trajectories.empty() ) { 
     event.put(recHitCollection,instance);
     event.put(trackExtraCollection,instance);
     if(theTrajectoryFlag) {
       event.put(trajectoryCollection,instance);
+
+      // Association map between track and trajectory
+      std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection() );
       event.put( trajTrackMap, instance );
     }
     if(theUpdatingAtVtx){
@@ -200,14 +202,8 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
     theService->eventSetup().get<TrajectoryFitter::Record>().get(theSmootherName,aSmoother);
     theSmoother.reset(aSmoother->clone());
     edm::ESHandle<TransientTrackingRecHitBuilder> theTrackerRecHitBuilder;
-    try { 
-      std::string theTrackerRecHitBuilderName("WithAngleAndTemplate");  // to be moved to cfg in another PR
-      theService->eventSetup().get<TransientRecHitRecord>().get(theTrackerRecHitBuilderName,theTrackerRecHitBuilder);
-      theTrackerRecHitBuilder.product();
-    } catch(...) {
-      std::string theTrackerRecHitBuilderName("hltESPTTRHBWithTrackAngle");  // FIXME FIXME
-      theService->eventSetup().get<TransientRecHitRecord>().get(theTrackerRecHitBuilderName,theTrackerRecHitBuilder);
-    }
+    theService->eventSetup().get<TransientRecHitRecord>().get(theTrackerRecHitBuilderName,theTrackerRecHitBuilder);
+    theTrackerRecHitBuilder.product();
     hitCloner = static_cast<TkTransientTrackingRecHitBuilder const *>(theTrackerRecHitBuilder.product())->cloner();
     theSmoother->setHitCloner(&hitCloner);
   }  
@@ -284,6 +280,7 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
     }
     
     // Fill the track extra with the rec hit (persistent-)reference
+    unsigned int nHitsAdded = 0;
     for (Trajectory::RecHitContainer::const_iterator recHit = transHits.begin(); recHit != transHits.end(); ++recHit) {
       TrackingRecHit *singleHit = (**recHit).hit()->clone();
       std::vector<const TrackingRecHit*> hits = MuonTrackLoader::unpackHit(*singleHit);
@@ -302,9 +299,11 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
           }
       }
       recHitCollection->push_back( singleHit );  
-      // set the TrackingRecHitRef (persitent reference of the tracking rec hits)
-      trackExtra.add(TrackingRecHitRef(recHitCollectionRefProd, recHitsIndex++ ));
+      ++nHitsAdded;
     }
+    // set the TrackingRecHitRef (persitent reference of the tracking rec hits)
+    trackExtra.setHits(recHitCollectionRefProd, recHitsIndex, nHitsAdded);
+    recHitsIndex +=nHitsAdded;
 
     // fill the TrackExtraCollection
     trackExtraCollection->push_back(trackExtra);
@@ -347,6 +346,10 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
 
   if ( theTrajectoryFlag ) {
     OrphanHandle<std::vector<Trajectory> > rTrajs = event.put(trajectoryCollection,instance);
+
+    // Association map between track and trajectory
+    std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection(rTrajs, nonUpdatedHandle) );
+  
     // Now Create traj<->tracks association map
     for ( std::map<unsigned int, unsigned int>::iterator i = tjTkMap.begin(); 
           i != tjTkMap.end(); i++ ) {
@@ -477,7 +480,7 @@ MuonTrackLoader::loadTracks(const CandidateContainer& muonCands,
 
 OrphanHandle<reco::TrackCollection> 
 MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
-			    Event& event, const std::vector<std::pair<Trajectory*,reco::TrackRef> >& miniMap, const string& instance, bool reallyDoSmoothing) {
+			    Event& event, const std::vector<std::pair<Trajectory*,reco::TrackRef> >& miniMap, Handle<reco::TrackCollection> const& trackHandle, const string& instance, bool reallyDoSmoothing) {
   
   const bool doSmoothing = theSmoothingStep && reallyDoSmoothing;
   
@@ -491,8 +494,8 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
   reco::TrackRefProd trackCollectionRefProd = event.getRefBeforePut<reco::TrackCollection>(instance);
     
   // Association map between GlobalMuons and TeVMuons
-  auto_ptr<reco:: TrackToTrackMap> trackToTrackmap(new reco::TrackToTrackMap);
-  
+  auto_ptr<reco:: TrackToTrackMap> trackToTrackmap(new reco::TrackToTrackMap(trackHandle,trackCollectionRefProd ));
+   
   // the track extra collection, it will be loaded in the event  
   auto_ptr<reco::TrackExtraCollection> trackExtraCollection(new reco::TrackExtraCollection() );
   // ... and its reference into the event
@@ -506,15 +509,15 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
   // Collection of Trajectory
   auto_ptr<vector<Trajectory> > trajectoryCollection(new vector<Trajectory>);
   
-  // Association map between track and trajectory
-  std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection() );
-  
   // don't waste any time...
   if ( trajectories.empty() ) { 
     event.put(recHitCollection,instance);
     event.put(trackExtraCollection,instance);
     if(theTrajectoryFlag) {
       event.put(trajectoryCollection,instance);
+
+      // Association map between track and trajectory
+      std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection() );
       event.put( trajTrackMap, instance );
     }
     event.put(trackToTrackmap, instance);
@@ -617,6 +620,7 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
     pair<bool,reco::Track> updateResult(false,reco::Track());
             
     // Fill the track extra with the rec hit (persistent-)reference
+    unsigned int nHitsAdded = 0;
     for (Trajectory::RecHitContainer::const_iterator recHit = transHits.begin();
 	 recHit != transHits.end(); ++recHit) {
 	TrackingRecHit *singleHit = (**recHit).hit()->clone();
@@ -635,11 +639,13 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
                 break;
             }
         }
-	}
-	recHitCollection->push_back( singleHit );  
-	// set the TrackingRecHitRef (persitent reference of the tracking rec hits)
-	trackExtra.add(TrackingRecHitRef(recHitCollectionRefProd, recHitsIndex++ ));
     }
+    recHitCollection->push_back( singleHit );
+    ++nHitsAdded;
+    }
+    // set the TrackingRecHitRef (persitent reference of the tracking rec hits)
+    trackExtra.setHits(recHitCollectionRefProd, recHitsIndex, nHitsAdded);
+    recHitsIndex += nHitsAdded;
 
     // fill the TrackExtraCollection
     trackExtraCollection->push_back(trackExtra);
@@ -676,6 +682,10 @@ MuonTrackLoader::loadTracks(const TrajectoryContainer& trajectories,
 
   if ( theTrajectoryFlag ) {
     OrphanHandle<std::vector<Trajectory> > rTrajs = event.put(trajectoryCollection,instance);
+
+    // Association map between track and trajectory
+    std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection(rTrajs, nonUpdatedHandle) );
+
     // Now Create traj<->tracks association map
     for ( std::map<unsigned int, unsigned int>::iterator i = tjTkMap.begin(); 
           i != tjTkMap.end(); i++ ) {

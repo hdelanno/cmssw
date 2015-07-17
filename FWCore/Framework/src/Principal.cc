@@ -20,6 +20,7 @@
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
+#include "TClass.h"
 
 #include <algorithm>
 #include <cstring>
@@ -35,10 +36,19 @@ namespace edm {
 
   static
   void
-  maybeThrowMissingDictionaryException(TypeID const& productType, bool isElement, std::vector<std::string> const& missingDictionaries) {
-    if(binary_search_all(missingDictionaries, productType.className())) {
-      checkDictionaries(isElement ? productType.className() : wrappedClassName(productType.className()), false);
-      throwMissingDictionariesException();
+  maybeThrowMissingDictionaryException(TypeID const& productType, bool isElement, std::vector<TypeID> const& missingDictionaries) {
+    if(isElement) {
+      if(binary_search_all(missingDictionaries, productType)) {
+        checkTypeDictionary(productType);
+        throwMissingDictionariesException();
+      }
+    } else {
+      TClass* cl = TClass::GetClass(wrappedClassName(productType.className()).c_str());
+      TypeID wrappedProductType = TypeID(cl->GetTypeInfo());
+      if(binary_search_all(missingDictionaries, wrappedProductType)) {
+        checkClassDictionary(wrappedProductType);
+        throwMissingDictionariesException();
+      }
     }
   }
 
@@ -100,7 +110,7 @@ namespace edm {
 
   namespace {
     void failedToRegisterConsumesMany(edm::TypeID const& iType) {
-      LogInfo("GetManyWithoutRegistration")<<"::getManyByType called for "<<iType<<" without a corresponding consumesMany being called for this module. \n";
+      LogError("GetManyWithoutRegistration")<<"::getManyByType called for "<<iType<<" without a corresponding consumesMany being called for this module. \n";
     }
     
     void failedToRegisterConsumes(KindOfType kindOfType,
@@ -108,8 +118,8 @@ namespace edm {
                                   std::string const& moduleLabel,
                                   std::string const& productInstanceName,
                                   std::string const& processName) {
-      LogInfo("GetByLabelWithoutRegistration")<<"::getByLabel without corresponding call to consumes or mayConsumes for this module.\n"
-      << (kindOfType == PRODUCT_TYPE ? "  type: " : " type: edm::Veiw<")<<productType
+      LogError("GetByLabelWithoutRegistration")<<"::getByLabel without corresponding call to consumes or mayConsumes for this module.\n"
+      << (kindOfType == PRODUCT_TYPE ? "  type: " : " type: edm::View<")<<productType
       << (kindOfType == PRODUCT_TYPE ? "\n  module label: " : ">\n  module label: ")<<moduleLabel
       <<"\n  product instance name: '"<<productInstanceName
       <<"'\n  process name: '"<<processName<<"'\n";
@@ -390,7 +400,17 @@ namespace edm {
   ProductHolderBase*
   Principal::getExistingProduct(ProductHolderBase const& productHolder) {
     ProductHolderBase* phb = getExistingProduct(productHolder.branchDescription().branchID());
-    assert(nullptr == phb || BranchKey(productHolder.branchDescription()) == BranchKey(phb->branchDescription()));
+    if(nullptr != phb && BranchKey(productHolder.branchDescription()) != BranchKey(phb->branchDescription())) {
+      BranchDescription const& newProduct = phb->branchDescription();
+      BranchDescription const& existing = productHolder.branchDescription();
+      if(newProduct.branchName() != existing.branchName() && newProduct.branchID() == existing.branchID()) {
+        throw cms::Exception("HashCollision") << "Principal::getExistingProduct\n" <<
+          " Branch " << newProduct.branchName() << " has same branch ID as branch " << existing.branchName() << "\n" <<
+          "Workaround: change process name or product instance name of " << newProduct.branchName() << "\n";
+      } else {
+        assert(nullptr == phb || BranchKey(productHolder.branchDescription()) == BranchKey(phb->branchDescription()));
+      }
+    }
     return phb;
   }
 
@@ -476,8 +496,8 @@ namespace edm {
   }
 
   BasicHandle
-  Principal::getByToken(KindOfType kindOfType,
-                        TypeID const& typeID,
+  Principal::getByToken(KindOfType,
+                        TypeID const&,
                         ProductHolderIndex index,
                         bool skipCurrentProcess,
                         bool& ambiguous,
@@ -580,7 +600,7 @@ namespace edm {
 
   void
   Principal::findProducts(std::vector<ProductHolderBase const*> const& holders,
-                          TypeID const& typeID,
+                          TypeID const&,
                           BasicHandleVec& results,
                           ModuleCallingContext const* mcc) const {
 

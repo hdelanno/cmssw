@@ -27,11 +27,8 @@
 #include "CoralBase/Attribute.h"
 #include "CoralBase/AttributeList.h"
 
-#include <boost/regex.hpp>
-
 // for the xml dump
 #include "TFile.h"
-#include "Cintex/Cintex.h"
 #include <sstream>
 #include <vector>
 #include <tuple>
@@ -195,7 +192,7 @@ int cond::MigrateGTUtilities::execute(){
     newGT = session.createGlobalTag( gtag );
     newGT.setDescription( "GT "+gtag+" migrated from account "+sourceConnect );
     newGT.setRelease( release );
-    newGT.setSnapshotTime( boost::posix_time::microsec_clock::universal_time() );
+    newGT.setSnapshotTime( boost::posix_time::time_from_string(std::string(cond::time::MAX_TIMESTAMP) ) );
   }
   std::cout <<"Processing "<<gtlist.size()<<" tags."<<std::endl;
   size_t nerr = 0;

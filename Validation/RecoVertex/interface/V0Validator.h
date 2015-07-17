@@ -32,7 +32,7 @@
 
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/MonitorElement.h"
-#include <DQMServices/Core/interface/DQMEDAnalyzer.h>
+#include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 
 #include "FWCore/ServiceRegistry/interface/Service.h"
 
@@ -41,8 +41,6 @@
 #include "SimDataFormats/Track/interface/SimTrackContainer.h"
 #include "SimDataFormats/Vertex/interface/SimVertexContainer.h"
 #include "SimTracker/TrackerHitAssociation/interface/TrackerHitAssociator.h"
-#include "SimTracker/Records/interface/VertexAssociatorRecord.h"
-#include "SimTracker/VertexAssociation/interface/VertexAssociatorBase.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingVertex.h"
 #include "TrackingTools/TrajectoryState/interface/FreeTrajectoryState.h"
@@ -88,7 +86,7 @@ public:
 
 
 private:
-  virtual void analyze(const edm::Event&, const edm::EventSetup&);
+  virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
   void bookHistograms(DQMStore::IBooker &, edm::Run const &, edm::EventSetup const &) override;
 
   //Quantities that are to be histogrammed
@@ -201,10 +199,7 @@ private:
   std::string dirName;
   edm::EDGetTokenT<reco::RecoToSimCollection> recoRecoToSimCollectionToken_;
   edm::EDGetTokenT<reco::SimToRecoCollection> recoSimToRecoCollectionToken_;
-  edm::EDGetTokenT<TrackingParticleCollection> trackingParticleCollection_Eff_Token_, trackingParticleCollectionToken_;
-  edm::EDGetTokenT< edm::View<reco::Track> > edmView_recoTrack_Token_;
-  edm::EDGetTokenT<edm::SimTrackContainer> edmSimTrackContainerToken_;
-  edm::EDGetTokenT<edm::SimVertexContainer> edmSimVertexContainerToken_;
+  edm::EDGetTokenT<TrackingParticleCollection> trackingParticleCollection_Eff_Token_;
   edm::EDGetTokenT< std::vector<reco::Vertex> > vec_recoVertex_Token_;
   edm::EDGetTokenT<reco::VertexCompositeCandidateCollection> recoVertexCompositeCandidateCollection_k0s_Token_, recoVertexCompositeCandidateCollection_lambda_Token_;
 };

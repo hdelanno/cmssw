@@ -1,13 +1,14 @@
 import FWCore.ParameterSet.Config as cms
 
-from SimTracker.TrackAssociation.TrackAssociatorByHits_cfi import *
+from SimTracker.TrackAssociatorProducers.quickTrackAssociatorByHits_cfi import *
 from Validation.RecoTrack.TrackValidation_cff import *
-TrackAssociatorByHitsRecoDenom.associateStrip = False
-TrackAssociatorByHitsRecoDenom.associatePixel = False
+quickTrackAssociatorByHits.associateStrip = False
+quickTrackAssociatorByHits.associatePixel = False
+quickTrackAssociatorByHits.useClusterTPAssociation = False
 #TrackAssociatorByHitsRecoDenom.ROUList = ['famosSimHitsTrackerHits']
-trackValidator.UseAssociators = True
-trackValidator.skipHistoFit=cms.untracked.bool(True)
 trackValidator.useLogPt=cms.untracked.bool(True)
+trackValidator.dodEdxPlots = False
+trackValidator.sim = [cms.InputTag('famosSimHits','TrackerHits')]
 
 trackValidator.stableOnlyTP = True
 trackValidator.histoProducerAlgoBlock.generalTpSelector.stableOnly = True

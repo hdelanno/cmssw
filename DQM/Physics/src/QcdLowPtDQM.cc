@@ -4,7 +4,7 @@
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/GeometryVector/interface/LocalPoint.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "DataFormats/TrackerRecHit2D/interface/SiPixelRecHitCollection.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -822,7 +822,7 @@ void QcdLowPtDQM::fillPixels(const Event &iEvent,
 
   // Retrieve tracker topology from geometry
   edm::ESHandle<TrackerTopology> tTopoHandle;
-  iSetup.get<IdealGeometryRecord>().get(tTopoHandle);
+  iSetup.get<TrackerTopologyRcd>().get(tTopoHandle);
   const TrackerTopology *const tTopo = tTopoHandle.product();
 
   const SiPixelRecHitCollection *hits = hRecHits.product();
@@ -1041,11 +1041,11 @@ void QcdLowPtDQM::fillTracklets(
   }
 
   // fill tracklet based info
-  TAxis *xa = AlphaTracklets->GetXaxis();
-  int ybin = AlphaTracklets->GetYaxis()->FindFixBin(pixels.size());
-  int zbin = AlphaTracklets->GetZaxis()->FindFixBin(trackletV.z());
-  int tbin = AlphaTracklets->GetBin(0, ybin, zbin);
-  for (size_t k = 0; k < tracklets.size(); ++k) {
+  const TAxis *xa = AlphaTracklets->GetXaxis();
+  int ybin  = AlphaTracklets->GetYaxis()->FindFixBin(pixels.size());
+  int zbin  = AlphaTracklets->GetZaxis()->FindFixBin(trackletV.z());
+  int tbin  = AlphaTracklets->GetBin(0,ybin,zbin);
+  for(size_t k=0; k<tracklets.size(); ++k) {
     const Tracklet &tl(tracklets.at(k));
     fill2D(detaphi, tl.deta(), tl.dphi());
     fill1D(deta, tl.deta());

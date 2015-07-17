@@ -82,9 +82,10 @@ private:
       std::map<TrackRefKey, reco::TrackRef  > goodTracks;
       TrackRefKey current = 0;
 
+      selector_.init(evt,es);
       for (reco::TrackCollection::const_iterator it = hSrcTrack->begin(), ed = hSrcTrack->end(); it != ed; ++it, ++current) {
           const reco::Track & trk = * it;
-          if (!selector_(trk, evt)) continue;
+          if (!selector_(trk)) continue;
 
           selTracks_->push_back( Track( trk ) ); // clone and store
           if (!copyExtras_) continue;
@@ -98,10 +99,12 @@ private:
           selTracks_->back().setExtra( TrackExtraRef( rTrackExtras, selTrackExtras_->size() - 1) );
           TrackExtra & tx = selTrackExtras_->back();
           // TrackingRecHits
+          auto const firstHitIndex = selHits_->size();
           for( trackingRecHit_iterator hit = trk.recHitsBegin(); hit != trk.recHitsEnd(); ++ hit ) {
               selHits_->push_back( (*hit)->clone() );
-              tx.add( TrackingRecHitRef( rHits, selHits_->size() - 1) );
           }
+          tx.setHits( rHits, firstHitIndex, selHits_->size() - firstHitIndex );
+
           if (copyTrajectories_) {
               goodTracks[current] = reco::TrackRef(rTracks, selTracks_->size() - 1);
           }

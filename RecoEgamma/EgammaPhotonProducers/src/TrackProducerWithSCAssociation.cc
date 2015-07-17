@@ -353,13 +353,15 @@ TrackingRecHitRefProd rHits = evt.getRefBeforePut<TrackingRecHitCollection>();
     auto ih = selHits->size();
     assert(ih==hidx);
     t2t(*theTraj,*selHits,false);
-    auto ie = selHits->size();
+    auto const ie = selHits->size();
+    unsigned int nHitsAdded = 0;
     for (;ih<ie; ++ih) {
       auto const & hit = (*selHits)[ih];
       track.appendHitPattern(hit);
-      tx.add( TrackingRecHitRef( rHits, hidx ++ ) );
+      ++nHitsAdded;
     }
-
+    tx.setHits( rHits, hidx, nHitsAdded);
+    hidx +=nHitsAdded;
     /*
     if (theTraj->direction() == alongMomentum) {
       for( TrajectoryFitter::RecHitContainer::const_iterator j = transHits.begin();
@@ -412,7 +414,7 @@ TrackingRecHitRefProd rHits = evt.getRefBeforePut<TrackingRecHitCollection>();
     edm::OrphanHandle<std::vector<Trajectory> > rTrajs = evt.put(selTrajectories);
     
     // Now Create traj<->tracks association map
-    std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection() );
+    std::auto_ptr<TrajTrackAssociationCollection> trajTrackMap( new TrajTrackAssociationCollection(rTrajs, rTracks_) );
     for ( std::map<unsigned int, unsigned int>::iterator i = tjTkMap.begin();
           i != tjTkMap.end(); i++ ) {
       edm::Ref<std::vector<Trajectory> > trajRef( rTrajs, (*i).first );
@@ -422,10 +424,4 @@ TrackingRecHitRefProd rHits = evt.getRefBeforePut<TrackingRecHitCollection>();
     }
     evt.put( trajTrackMap );
   }
-
-
-
-
-
-
 }

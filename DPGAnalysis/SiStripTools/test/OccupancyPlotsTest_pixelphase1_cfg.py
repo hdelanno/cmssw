@@ -8,7 +8,7 @@ process = cms.Process("OccupancyPlotsTest")
 options = VarParsing.VarParsing("analysis")
 
 options.register ('globalTag',
-                  "DONOTEXIST::All",
+                  "DONOTEXIST",
                   VarParsing.VarParsing.multiplicity.singleton, # singleton or list
                   VarParsing.VarParsing.varType.string,          # string, int, or float
                   "GlobalTag")
@@ -253,13 +253,14 @@ process.load("DPGAnalysis.SiStripTools.duplicaterechits_cfi")
 #----GlobalTag ------------------------
 
 #process.load("Configuration.StandardSequences.GeometryDB_cff")
-process.load("Configuration.Geometry.GeometryExtendedPhaseIPixelReco_cff")
-process.load("Configuration.Geometry.GeometryExtendedPhaseIPixel_cff")
+process.load("Configuration.Geometry.GeometryExtended2017Reco_cff")
+#process.load("Configuration.Geometry.GeometryExtendedPhaseIPixel_cff")
 process.load('Configuration.StandardSequences.MagneticField_38T_PostLS1_cff')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 
-process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = options.globalTag
+process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff")
+from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
+process.GlobalTag = GlobalTag(process.GlobalTag, options.globalTag, '')
 
 from SLHCUpgradeSimulations.Configuration.phase1TkCustoms import *
 
@@ -289,7 +290,7 @@ process.myrereco = cms.Sequence(
     process.trackingGlobalReco)
 
 process.p0 = cms.Path(
-    process.myrereco +
+#    process.myrereco +
     process.seqHLTSelection +
     process.seqProducers +
     process.seqAnalyzers +
