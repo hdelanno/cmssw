@@ -114,15 +114,18 @@ jetsForCoreTrackingPreSplitting = jetsForCoreTracking.clone(
     src = 'ak4CaloJetsForTrkPreSplitting')
 
 #Cluster Splitting
-from RecoLocalTracker.SubCollectionProducers.jetCoreClusterSplitter_cfi import jetCoreClusterSplitter
-siPixelClusters = jetCoreClusterSplitter.clone(
-    pixelClusters = cms.InputTag('siPixelClustersPreSplitting'),
-    vertices      = 'firstStepPrimaryVerticesPreSplitting',
-    cores         = 'jetsForCoreTrackingPreSplitting'
-)
+#From here...
+from RecoLocalTracker.SubCollectionProducers.jetCoreClusterSplitter_cfi import jetCoreClusterSplitter #not needed?
+siPixelClusters = jetCoreClusterSplitter.clone( #not needed?
+    pixelClusters = cms.InputTag('siPixelClustersPreSplitting'), #not needed?
+    vertices      = 'firstStepPrimaryVerticesPreSplitting', #not needed?
+    cores         = 'jetsForCoreTrackingPreSplitting' #not needed?
+) #not needed?
+#to here... it's optional. At least I don't see any difference
+from RecoLocalTracker.SiPixelRecHits.SiPixelRecHits_cfi import siPixelRecHits
+from RecoLocalTracker.SiPixelClusterizer.SiPixelClusterizer_cfi import siPixelClusters #This line is NEEDED
 
 # Final sequence
-from RecoLocalTracker.SiPixelRecHits.SiPixelRecHits_cfi import siPixelRecHits
 from RecoTracker.MeasurementDet.MeasurementTrackerEventProducer_cfi import MeasurementTrackerEvent
 from RecoPixelVertexing.PixelLowPtUtilities.siPixelClusterShapeCache_cfi import *
 InitialStepPreSplitting = cms.Sequence(initialStepSeedLayersPreSplitting*

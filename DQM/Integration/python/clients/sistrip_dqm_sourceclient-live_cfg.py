@@ -213,7 +213,8 @@ process.hltHighLevel.throw =  cms.bool(False)
 #--------------------------
 process.SiStripSources_LocalReco = cms.Sequence(process.siStripFEDMonitor*process.SiStripMonitorDigi*process.SiStripMonitorClusterReal)
 process.DQMCommon                = cms.Sequence(process.stripQTester*process.trackingQTester*process.dqmEnv*process.dqmEnvTr*process.dqmSaver)
-process.RecoForDQM_LocalReco     = cms.Sequence(process.siPixelDigis*process.siStripDigis*process.gtDigis*process.trackerlocalreco*process.gtEvmDigis)
+#process.RecoForDQM_LocalReco     = cms.Sequence(process.siPixelDigis*process.siStripDigis*process.gtDigis*process.trackerlocalreco*process.gtEvmDigis)
+process.RecoForDQM_LocalReco     = cms.Sequence(process.siStripDigis*process.gtDigis*process.trackerlocalreco*process.gtEvmDigis)
 
 #--------------------------
 # Global Plot Switches
@@ -339,7 +340,7 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
     process.InitialStepPreSplitting.remove(process.caloTowerForTrkPreSplitting)
     process.InitialStepPreSplitting.remove(process.ak4CaloJetsForTrkPreSplitting)
     process.InitialStepPreSplitting.remove(process.jetsForCoreTrackingPreSplitting)
-    process.InitialStepPreSplitting.remove(process.siPixelClusters)
+    #process.InitialStepPreSplitting.remove(process.siPixelClusters)
     process.InitialStepPreSplitting.remove(process.siPixelRecHits)
     process.InitialStepPreSplitting.remove(process.MeasurementTrackerEvent)
     process.InitialStepPreSplitting.remove(process.siPixelClusterShapeCache)
@@ -358,7 +359,9 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
         process.consecutiveHEs*
         process.hltTriggerTypeFilter*
         process.siStripFEDCheck *
-        process.RecoForDQM_LocalReco*
+        process.siPixelDigis*
+	process.siPixelClusters*
+	process.RecoForDQM_LocalReco*
         process.DQMCommon*
         process.SiStripClients*
         process.SiStripSources_LocalReco*
@@ -582,3 +585,4 @@ if (process.runType.getRunType() == process.runType.hi_run):
 ### process customizations included here
 from DQM.Integration.config.online_customizations_cfi import *
 process = customise(process)
+
