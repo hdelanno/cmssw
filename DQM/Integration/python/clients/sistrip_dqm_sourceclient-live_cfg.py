@@ -340,10 +340,13 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
     process.InitialStepPreSplitting.remove(process.caloTowerForTrkPreSplitting)
     process.InitialStepPreSplitting.remove(process.ak4CaloJetsForTrkPreSplitting)
     process.InitialStepPreSplitting.remove(process.jetsForCoreTrackingPreSplitting)
-    #process.InitialStepPreSplitting.remove(process.siPixelClusters)
+    process.InitialStepPreSplitting.remove(process.siPixelClusters)
     process.InitialStepPreSplitting.remove(process.siPixelRecHits)
     process.InitialStepPreSplitting.remove(process.MeasurementTrackerEvent)
     process.InitialStepPreSplitting.remove(process.siPixelClusterShapeCache)
+
+    # Redefinition of siPixelClusters: has to be after RecoTracker.IterativeTracking.InitialStepPreSplitting_cff
+    process.load("RecoLocalTracker.SiPixelClusterizer.SiPixelClusterizer_cfi")
 
     from RecoTracker.TkSeedingLayers.PixelLayerTriplets_cfi import *
     process.PixelLayerTriplets.BPix.HitProducer = cms.string('siPixelRecHitsPreSplitting')
@@ -580,9 +583,8 @@ if (process.runType.getRunType() == process.runType.hi_run):
                          process.SiStripBaselineValidator*
                          process.TrackingClients
                          )
-    
+
 
 ### process customizations included here
 from DQM.Integration.config.online_customizations_cfi import *
 process = customise(process)
-
